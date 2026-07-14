@@ -75,12 +75,12 @@ export default function TaskRow({ task, projectColor, onToggle, onOpen, isMobile
   return (
     <div
       onClick={() => onOpen(task.gid)}
-      className="flex items-center gap-3 py-3 px-1.5 cursor-pointer rounded-lg hover:bg-[#faf8f4] transition-colors"
+      className="grid grid-cols-[22px_minmax(0,1fr)_96px_210px_150px] items-center gap-x-4 py-2.5 cursor-pointer hover:bg-[#faf8f4] transition-colors"
     >
       <Checkbox done={done} onToggle={() => onToggle(task.gid, !done)} />
 
       <span
-        className={`flex-1 min-w-0 font-medium text-[15px] leading-snug truncate ${
+        className={`min-w-0 font-medium text-[15px] leading-snug truncate ${
           done ? 'text-fainter line-through' : 'text-ink'
         }`}
       >
@@ -88,25 +88,23 @@ export default function TaskRow({ task, projectColor, onToggle, onOpen, isMobile
       </span>
 
       <span
-        className={`w-[90px] flex-none font-semibold text-xs ${
+        className={`font-semibold text-xs ${
           overdue ? 'text-danger' : done ? 'text-placeholder' : 'text-muted'
         }`}
       >
         {formatDateShort(task.due_on)}
       </span>
 
-      <span className="flex items-center gap-1.5 w-[110px] flex-none">
+      <span className="flex items-center gap-1.5 min-w-0">
         <span
           className="w-[9px] h-[9px] rounded-full flex-none"
           style={{ background: projectColor ?? '#b8b2a8' }}
         />
-        <span className="font-medium text-xs text-muted whitespace-nowrap overflow-hidden text-ellipsis">
-          {projectName}
-        </span>
+        <span className="font-medium text-xs text-muted truncate">{projectName}</span>
       </span>
 
       <span
-        className={`w-[78px] flex-none text-right font-medium text-xs whitespace-nowrap overflow-hidden text-ellipsis ${
+        className={`min-w-0 font-medium text-xs truncate ${
           assigneeName ? 'text-muted' : 'text-fainter italic'
         }`}
       >
