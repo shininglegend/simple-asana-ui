@@ -46,6 +46,25 @@ export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobil
         </span>
       )}
       <span className="text-[13px] text-muted font-normal">{assigneeName ?? 'Unassigned'}</span>
+      {task.num_subtasks > 0 && (
+        <span
+          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-panel border border-border-soft text-[11px] font-medium text-muted"
+          title={`${task.num_subtasks} ${task.num_subtasks === 1 ? 'subtask' : 'subtasks'}`}
+        >
+          <svg
+            className="w-3 h-3 text-muted/70 flex-none"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M6 6v6h8m0 0l-3-3m3 3l-3 3" />
+          </svg>
+          <span>{task.num_subtasks}</span>
+        </span>
+      )}
       {task.projects && task.projects.length > 0 ? (
         task.projects.map((p) => {
           const color = projectColors.get(p.gid) ?? '#b8b2a8';

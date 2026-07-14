@@ -1,7 +1,7 @@
 import { useEffect, useState, Fragment } from 'react';
 import { formatDateLong, isOverdue } from '../lib/format.js';
 import { colorForName, getStatusStyle } from '../lib/colors.js';
-import { getStories, addComment } from '../lib/api.js';
+import { getStories, addComment, getSubtasks, setTaskCompleted } from '../lib/api.js';
 
 const FALLBACK_OPTIONS = [
   { gid: 'unknown', name: 'UNKNOWN - PLEASE CHANGE', color: 'orange' },
@@ -25,6 +25,8 @@ const FALLBACK_STATUS_FIELD = {
 
 export default function TaskDetailModal({
   task,
+  isLoading,
+  onOpenTask,
   projectColors,
   projects = [],
   onAddProject,
@@ -41,15 +43,19 @@ export default function TaskDetailModal({
   people = [],
   isMobile,
 }) {
-  const [dueDate, setDueDate] = useState(task.due_on ?? null);
-  const [notes, setNotes] = useState(task.notes ?? '');
-  const [name, setName] = useState(task.name ?? '');
+  const [dueDate, setDueDate] = useState(task?.due_on ?? null);
+  const [notes, setNotes] = useState(task?.notes ?? '');
+  const [name, setName] = useState(task?.name ?? '');
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(true);
   const [commentError, setCommentError] = useState(null);
   const [copied, setCopied] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const [subtasks, setSubtasks] = useState([]);
+  const [loadingSubtasks, setLoadingSubtasks] = useState(true);
+  const [subtaskError, setSubtaskError] = useState(null);
 
   const handleCopyLink = () => {
     try {
@@ -64,18 +70,19 @@ export default function TaskDetailModal({
   };
 
   useEffect(() => {
-    setDueDate(task.due_on ?? null);
-  }, [task.gid, task.due_on]);
+    setDueDate(task?.due_on ?? null);
+  }, [task?.gid, task?.due_on]);
 
   useEffect(() => {
-    setNotes(task.notes ?? '');
-  }, [task.gid, task.notes]);
+    setNotes(task?.notes ?? '');
+  }, [task?.gid, task?.notes]);
 
   useEffect(() => {
-    setName(task.name ?? '');
-  }, [task.gid, task.name]);
+    setName(task?.name ?? '');
+  }, [task?.gid, task?.name]);
 
   useEffect(() => {
+    if (!task?.gid) return;
     let cancelled = false;
     setLoadingComments(true);
     setCommentError(null);
@@ -98,17 +105,54 @@ export default function TaskDetailModal({
     return () => {
       cancelled = true;
     };
-  }, [task.gid]);
+  }, [task?.gid]);
 
-  const done = !!task.completed;
+  useEffect(() => {
+    if (!task?.gid) return;
+    let cancelled = false;
+    setLoadingSubtasks(true);
+    setSubtaskError(null);
+    getSubtasks(task.gid)
+      .then((data) => {
+        if (!cancelled) {
+          setSubtasks(data);
+        }
+      })
+      .catch((err) => {
+        console.error('Error fetching subtasks:', err);
+        if (!cancelled) setSubtaskError('Couldn’t load subtasks.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingSubtasks(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [task?.gid]);
+
+  const done = !!task?.completed;
   const overdue = isOverdue(dueDate, done);
-  const availableProjects = projects.filter((p) => !task.projects?.some((tp) => tp.gid === p.gid));
+  const availableProjects = projects.filter((p) => !task?.projects?.some((tp) => tp.gid === p.gid));
   const statusField =
-    task.custom_fields?.find((f) => f.name?.toLowerCase() === 'status') ||
+    task?.custom_fields?.find((f) => f.name?.toLowerCase() === 'status') ||
     globalStatusField ||
     FALLBACK_STATUS_FIELD;
   const currentStatus =
-    task.custom_fields?.find((f) => f.name?.toLowerCase() === 'status')?.enum_value || null;
+    task?.custom_fields?.find((f) => f.name?.toLowerCase() === 'status')?.enum_value || null;
+
+  async function handleToggleSubtask(subtaskGid, completed) {
+    const prev = subtasks.find((s) => s.gid === subtaskGid);
+    if (!prev) return;
+    setSubtasks((curr) => curr.map((s) => (s.gid === subtaskGid ? { ...s, completed } : s)));
+    try {
+      await setTaskCompleted(subtaskGid, completed);
+    } catch (err) {
+      setSubtasks((curr) =>
+        curr.map((s) => (s.gid === subtaskGid ? { ...s, completed: prev.completed } : s)),
+      );
+      console.error('Failed to toggle subtask:', err);
+    }
+  }
 
   async function submitComment(e) {
     if (e.key !== 'Enter') return;
@@ -132,6 +176,103 @@ export default function TaskDetailModal({
       setCommentError("Couldn't post the comment.");
     }
   }
+
+  if (isLoading || !task) {
+    return (
+      <div
+        className={
+          isMobile
+            ? 'fixed inset-0 z-50 bg-panel flex flex-col pt-[calc(env(safe-area-inset-top)+14px)]'
+            : 'fixed inset-0 z-50 bg-[rgba(43,41,38,0.34)] flex items-start justify-center py-14 px-5 overflow-auto'
+        }
+        onClick={onClose}
+      >
+        <div
+          className={
+            isMobile
+              ? 'flex-1 flex flex-col items-center justify-center p-6'
+              : 'w-full max-w-[560px] bg-panel rounded-2xl shadow-[0_24px_60px_rgba(40,32,20,0.28)] flex flex-col items-center justify-center p-20 min-h-[400px]'
+          }
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-accent border-t-transparent" />
+          <span className="mt-3 text-xs text-muted font-medium">Loading task...</span>
+        </div>
+      </div>
+    );
+  }
+
+  const parentTaskHeader = task.parent && (
+    <div className="text-xs font-semibold text-accent flex items-center gap-1.5 mb-2.5 select-none">
+      <span className="text-fainter font-normal text-[10px] uppercase tracking-wider">
+        Subtask of
+      </span>
+      <button
+        type="button"
+        onClick={() => onOpenTask && onOpenTask(task.parent.gid)}
+        className="hover:underline text-accent text-left border-0 bg-transparent p-0 cursor-pointer font-bold text-xs"
+      >
+        {task.parent.name}
+      </button>
+    </div>
+  );
+
+  const subtaskListSection = (
+    <div className="flex flex-col gap-2">
+      {loadingSubtasks && <span className="text-[13px] text-placeholder">Loading subtasks…</span>}
+      {!loadingSubtasks &&
+        subtasks.map((subtask) => {
+          const subtaskDone = !!subtask.completed;
+          return (
+            <div
+              key={subtask.gid}
+              className="flex items-center gap-2.5 py-1.5 px-2 -mx-2 rounded-lg hover:bg-[#faf8f4] cursor-pointer transition-colors group"
+              onClick={() => onOpenTask && onOpenTask(subtask.gid)}
+            >
+              <button
+                type="button"
+                aria-label="toggle subtask complete"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleSubtask(subtask.gid, !subtaskDone);
+                }}
+                className={`w-[18px] h-[18px] flex-none rounded-[5px] border-2 flex items-center justify-center cursor-pointer transition-all ${
+                  subtaskDone
+                    ? 'bg-accent border-accent hover:bg-accent-hover hover:border-accent-hover'
+                    : 'bg-panel border-border hover:bg-panel-alt hover:border-muted'
+                }`}
+              >
+                {subtaskDone && (
+                  <span className="w-[5px] h-[8px] border-white border-solid border-r-[2px] border-b-[2px] rotate-[43deg] -mt-0.5" />
+                )}
+              </button>
+              <span
+                className={`flex-1 text-sm truncate leading-snug ${
+                  subtaskDone ? 'text-fainter line-through' : 'text-ink font-medium'
+                }`}
+              >
+                {subtask.name}
+              </span>
+              <svg
+                className="w-3.5 h-3.5 text-placeholder opacity-0 group-hover:opacity-100 transition-opacity"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </div>
+          );
+        })}
+      {!loadingSubtasks && subtasks.length === 0 && !subtaskError && (
+        <span className="text-[13px] text-placeholder">No subtasks.</span>
+      )}
+      {subtaskError && <span className="text-[13px] font-medium text-danger">{subtaskError}</span>}
+    </div>
+  );
 
   const metaFields = (
     <div className="flex flex-col gap-y-4">
@@ -479,6 +620,7 @@ export default function TaskDetailModal({
           </button>
         </div>
         <div className="flex-1 overflow-auto px-4.5 pt-5 pb-7 flex flex-col gap-5">
+          {parentTaskHeader && <div className="-mb-2">{parentTaskHeader}</div>}
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -544,7 +686,14 @@ export default function TaskDetailModal({
             {descriptionField}
           </div>
 
-          <div className="flex flex-col gap-3.5">
+          <div className="flex flex-col gap-2.5 border-t border-border-soft pt-4.5">
+            <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
+              Subtasks
+            </span>
+            {subtaskListSection}
+          </div>
+
+          <div className="flex flex-col gap-3.5 border-t border-border-soft pt-4.5">
             <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
               {comments.length ? `Comments · ${comments.length}` : 'Comments'}
             </span>
@@ -578,38 +727,41 @@ export default function TaskDetailModal({
               <span className="w-[7px] h-3 border-white border-solid border-r-[2.5px] border-b-[2.5px] rotate-[43deg] -mt-0.5" />
             )}
           </button>
-          <textarea
-            ref={(el) => {
-              if (el) {
-                el.style.height = 'auto';
-                el.style.height = `${el.scrollHeight}px`;
-              }
-            }}
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              e.target.style.height = 'auto';
-              e.target.style.height = `${e.target.scrollHeight}px`;
-            }}
-            onBlur={() => {
-              const trimmed = name.trim();
-              if (trimmed && trimmed !== (task.name ?? '')) {
-                onNameChange(task.gid, trimmed);
-              } else if (!trimmed) {
-                setName(task.name ?? '');
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                e.target.blur();
-              }
-            }}
-            rows={1}
-            className={`flex-1 min-w-0 mt-0.5 font-bold text-xl bg-transparent border border-transparent hover:border-border-soft hover:bg-panel-alt/30 focus:bg-white focus:border-border focus:ring-1 focus:ring-accent rounded px-1.5 py-1 -mx-1.5 -my-1 outline-none resize-none overflow-hidden transition-all duration-150 ${
-              done ? 'text-fainter line-through' : 'text-ink'
-            }`}
-          />
+          <div className="flex-1 min-w-0 flex flex-col items-start">
+            {parentTaskHeader}
+            <textarea
+              ref={(el) => {
+                if (el) {
+                  el.style.height = 'auto';
+                  el.style.height = `${el.scrollHeight}px`;
+                }
+              }}
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = `${e.target.scrollHeight}px`;
+              }}
+              onBlur={() => {
+                const trimmed = name.trim();
+                if (trimmed && trimmed !== (task.name ?? '')) {
+                  onNameChange(task.gid, trimmed);
+                } else if (!trimmed) {
+                  setName(task.name ?? '');
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  e.target.blur();
+                }
+              }}
+              rows={1}
+              className={`w-full bg-transparent border border-transparent hover:border-border-soft hover:bg-panel-alt/30 focus:bg-white focus:border-border focus:ring-1 focus:ring-accent rounded px-1.5 py-1 -mx-1.5 -my-1 outline-none resize-none overflow-hidden transition-all duration-150 ${
+                done ? 'text-fainter line-through' : 'text-ink'
+              }`}
+            />
+          </div>
           <button
             type="button"
             onClick={handleCopyLink}
@@ -684,6 +836,13 @@ export default function TaskDetailModal({
             Description
           </span>
           {descriptionField}
+        </div>
+
+        <div className="px-6.5 py-5 border-b border-border-soft flex flex-col gap-2.5">
+          <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
+            Subtasks
+          </span>
+          {subtaskListSection}
         </div>
 
         <div className="px-6.5 pt-5 pb-6 flex flex-col gap-3.5">

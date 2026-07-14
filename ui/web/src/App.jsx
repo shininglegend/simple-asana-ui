@@ -23,6 +23,7 @@ import {
   removeTaskProject,
   setTaskCustomField,
   deleteTask,
+  getTask,
 } from './lib/api.js';
 
 const STATUS_OPTIONS = ['Incomplete', 'Complete', 'All'];
@@ -84,6 +85,8 @@ export default function App() {
       return null;
     }
   });
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [loadingSelectedTask, setLoadingSelectedTask] = useState(false);
 
   const handleSelectId = (id) => {
     setSelectedId(id);
@@ -138,6 +141,39 @@ export default function App() {
     const timer = setTimeout(() => setWriteError(null), 5000);
     return () => clearTimeout(timer);
   }, [writeError]);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setSelectedTask(null);
+      setLoadingSelectedTask(false);
+      return;
+    }
+
+    const localTask = tasks.find((t) => t.gid === selectedId);
+    if (localTask) {
+      setSelectedTask(localTask);
+    } else {
+      setSelectedTask(null);
+    }
+
+    setLoadingSelectedTask(true);
+    getTask(selectedId)
+      .then((fetchedTask) => {
+        setSelectedTask(fetchedTask);
+        setTasks((ts) => ts.map((t) => (t.gid === fetchedTask.gid ? { ...t, ...fetchedTask } : t)));
+      })
+      .catch((err) => {
+        console.error('Error fetching task details:', err);
+        if (!localTask) {
+          setWriteError('Could not load task details.');
+          setSelectedId(null);
+        }
+      })
+      .finally(() => {
+        setLoadingSelectedTask(false);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
 
   const projectColors = useMemo(() => assignProjectColors(projects), [projects]);
   const projectByName = useMemo(() => {
@@ -216,10 +252,9 @@ export default function App() {
     sortOrder,
   ]);
 
-  const selected = tasks.find((t) => t.gid === selectedId) ?? null;
-
   function updateTaskLocal(gid, patch) {
     setTasks((ts) => ts.map((t) => (t.gid === gid ? { ...t, ...patch } : t)));
+    setSelectedTask((curr) => (curr && curr.gid === gid ? { ...curr, ...patch } : curr));
   }
 
   // Apply `patch` optimistically, call the API, and roll the patched fields
@@ -910,9 +945,10 @@ export default function App() {
         </div>
       )}
 
-      {selected && (
+      {selectedId && (
         <TaskDetailModal
-          task={selected}
+          task={selectedTask}
+          isLoading={loadingSelectedTask}
           projectColors={projectColors}
           projects={projects}
           onAddProject={handleAddProject}
@@ -925,6 +961,7 @@ export default function App() {
           onAssigneeChange={handleAssigneeChange}
           onCustomFieldChange={handleCustomFieldChange}
           onDelete={handleDeleteTask}
+          onOpenTask={handleSelectId}
           globalStatusField={globalStatusField}
           people={people}
           isMobile={isMobile}
