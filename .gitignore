@@ -11,6 +11,7 @@ public/
 # Env / secrets (all real config lives in Cloudflare Pages env vars)
 .env
 .env.*
+!.env.example
 .dev.vars
 
 # OS / editor
