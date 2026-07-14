@@ -1,6 +1,6 @@
 const TASK_FIELDS =
   'name,due_on,completed,notes,created_at,assignee.gid,assignee.name,projects.gid,projects.name';
-const STORY_FIELDS = 'text,created_at,created_by.name,resource_subtype';
+const STORY_FIELDS = 'text,html_text,created_at,created_by.name,resource_subtype';
 
 async function apiFetch(path, options = {}) {
   const res = await fetch(`/api/asana/${path}`, {
@@ -110,7 +110,7 @@ export function getStories(taskGid) {
 }
 
 export function addComment(taskGid, text) {
-  return apiFetch(`tasks/${taskGid}/stories`, {
+  return apiFetch(`tasks/${taskGid}/stories?opt_fields=${STORY_FIELDS}`, {
     method: 'POST',
     body: JSON.stringify({ data: { text } }),
   });

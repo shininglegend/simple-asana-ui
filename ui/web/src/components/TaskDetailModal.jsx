@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Fragment } from 'react';
 import { formatDateLong, isOverdue } from '../lib/format.js';
 import { colorForName } from '../lib/colors.js';
 import { getStories, addComment } from '../lib/api.js';
@@ -43,6 +43,7 @@ export default function TaskDetailModal({
               author: s.created_by?.name ?? 'Someone',
               time: new Date(s.created_at).toLocaleString(),
               text: s.text,
+              htmlText: s.html_text,
             })),
         );
       })
@@ -69,7 +70,8 @@ export default function TaskDetailModal({
         {
           author: story.created_by?.name ?? 'You',
           time: new Date(story.created_at).toLocaleString(),
-          text,
+          text: story.text || text,
+          htmlText: story.html_text,
         },
       ]);
       setCommentError(null);
@@ -197,7 +199,9 @@ export default function TaskDetailModal({
                 <span className="font-semibold text-[13px] text-ink">{c.author}</span>
                 <span className="font-medium text-[11px] text-fainter">{c.time}</span>
               </div>
-              <span className="text-sm leading-relaxed text-ink-soft">{c.text}</span>
+              <span className="text-sm leading-relaxed text-ink-soft">
+                {renderCommentText(c.text, c.htmlText)}
+              </span>
             </div>
           </div>
         ))}
@@ -333,4 +337,166 @@ export default function TaskDetailModal({
       </div>
     </div>
   );
+}
+
+function domToReact(node, key) {
+  if (node.nodeType === 3) {
+    return node.nodeValue;
+  }
+  if (node.nodeType !== 1) {
+    return null;
+  }
+
+  const tagName = node.tagName.toLowerCase();
+  const children = Array.from(node.childNodes).map((child, i) => domToReact(child, `${key}-${i}`));
+
+  switch (tagName) {
+    case 'body':
+      return <Fragment key={key}>{children}</Fragment>;
+    case 'strong':
+    case 'b':
+      return (
+        <strong key={key} className="font-bold text-ink">
+          {children}
+        </strong>
+      );
+    case 'em':
+    case 'i':
+      return (
+        <em key={key} className="italic">
+          {children}
+        </em>
+      );
+    case 'u':
+      return (
+        <u key={key} className="underline">
+          {children}
+        </u>
+      );
+    case 's':
+    case 'del':
+    case 'strike':
+      return (
+        <span key={key} className="line-through text-fainter">
+          {children}
+        </span>
+      );
+    case 'code':
+      return (
+        <code
+          key={key}
+          className="bg-panel-alt/50 px-1 py-0.5 rounded font-mono text-[13px] text-danger border border-border-soft"
+        >
+          {children}
+        </code>
+      );
+    case 'pre':
+      return (
+        <pre
+          key={key}
+          className="bg-panel-alt/30 p-2 rounded font-mono text-xs text-ink overflow-x-auto my-1 border border-border-soft leading-normal"
+        >
+          {children}
+        </pre>
+      );
+    case 'p':
+      return (
+        <p key={key} className="my-1">
+          {children}
+        </p>
+      );
+    case 'br':
+      return <br key={key} />;
+    case 'ul':
+      return (
+        <ul key={key} className="list-disc pl-5 my-1">
+          {children}
+        </ul>
+      );
+    case 'ol':
+      return (
+        <ol key={key} className="list-decimal pl-5 my-1">
+          {children}
+        </ol>
+      );
+    case 'li':
+      return (
+        <li key={key} className="my-0.5">
+          {children}
+        </li>
+      );
+    case 'a': {
+      const href = node.getAttribute('href');
+      const type = node.getAttribute('data-asana-type');
+      const gid = node.getAttribute('data-asana-gid');
+
+      if (type === 'user') {
+        return (
+          <span
+            key={key}
+            className="inline-flex items-center px-1.5 py-0.5 rounded bg-highlight/60 text-accent font-semibold text-[13px] align-baseline transition-all duration-200 hover:bg-highlight cursor-default"
+            title={`User GID: ${gid}`}
+          >
+            {children}
+          </span>
+        );
+      }
+
+      if (type === 'task') {
+        return (
+          <span
+            key={key}
+            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-panel-alt/60 text-ink-soft font-semibold text-[13px] align-baseline transition-all duration-200 hover:bg-panel-alt cursor-default"
+            title={`Task GID: ${gid}`}
+          >
+            📋 {children}
+          </span>
+        );
+      }
+
+      if (type === 'project') {
+        return (
+          <span
+            key={key}
+            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-panel-alt/60 text-ink-soft font-semibold text-[13px] align-baseline transition-all duration-200 hover:bg-panel-alt cursor-default"
+            title={`Project GID: ${gid}`}
+          >
+            📁 {children}
+          </span>
+        );
+      }
+
+      return (
+        <a
+          key={key}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-accent hover:text-accent-hover underline"
+        >
+          {children}
+        </a>
+      );
+    }
+    default:
+      return <span key={key}>{children}</span>;
+  }
+}
+
+function renderCommentText(text, htmlText) {
+  if (!htmlText) {
+    return text;
+  }
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlText, 'text/html');
+    const body = doc.body;
+    if (!body || body.childNodes.length === 0) {
+      return text;
+    }
+    return domToReact(body, 'comment-root');
+  } catch (err) {
+    console.error('Error parsing comment html_text:', err);
+    return text;
+  }
 }
