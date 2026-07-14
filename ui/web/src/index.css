@@ -3,24 +3,24 @@
 @theme {
   --font-sans: 'Instrument Sans', system-ui, sans-serif;
 
-  --color-panel: #F0F3F7;
-  --color-panel-alt: #E2E7EE;
-  --color-border: #CBD3DC;
-  --color-border-soft: #DEE3EA;
+  --color-panel: #f0f3f7;
+  --color-panel-alt: #e2e7ee;
+  --color-border: #cbd3dc;
+  --color-border-soft: #dee3ea;
   --color-ink: #262626;
-  --color-ink-soft: #5A6270;
-  --color-muted: #5C6773;
-  --color-faint: #506A7D;
+  --color-ink-soft: #5a6270;
+  --color-muted: #5c6773;
+  --color-faint: #506a7d;
   --color-fainter: #576878;
-  --color-placeholder: #6E7E8E;
-  --color-accent: #48637B;
-  --color-accent-hover: #354E66;
+  --color-placeholder: #6e7e8e;
+  --color-accent: #48637b;
+  --color-accent-hover: #354e66;
   --color-danger: #c0402f;
-  --color-highlight: #D7E3EC;
+  --color-highlight: #d7e3ec;
 
-  --color-project-website: #48637B;
-  --color-project-ops: #7F9385;
-  --color-project-marketing: #5E7388;
+  --color-project-website: #48637b;
+  --color-project-ops: #7f9385;
+  --color-project-marketing: #5e7388;
 }
 
 body {
@@ -40,6 +40,6 @@ a:hover {
   width: 10px;
 }
 *::-webkit-scrollbar-thumb {
-  background: #CBD3DC;
+  background: #cbd3dc;
   border-radius: 8px;
 }
