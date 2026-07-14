@@ -155,6 +155,15 @@ export default function TaskDetailModal({
                   onDueChange(task.gid, val);
                 }
               }}
+              onClick={(e) => {
+                if (typeof e.target.showPicker === 'function') {
+                  try {
+                    e.target.showPicker();
+                  } catch (err) {
+                    console.warn('showPicker failed:', err);
+                  }
+                }
+              }}
               className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
             />
           </div>
