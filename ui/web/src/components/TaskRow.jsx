@@ -33,7 +33,7 @@ export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobil
 
   if (isMobile) {
     const createdDate = formatDateShort(task.created_at ? task.created_at.split('T')[0] : null);
-    const assigneeText = assigneeName ? `Assigned to ${assigneeName}` : 'Unassigned';
+    const assigneeText = assigneeName ? `${assigneeName}` : 'Unassigned';
 
     return (
       <div
