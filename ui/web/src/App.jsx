@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import FilterGroup from './components/FilterGroup.jsx';
+import MultiFilterGroup from './components/MultiFilterGroup.jsx';
 import TaskRow from './components/TaskRow.jsx';
 import TaskDetailModal from './components/TaskDetailModal.jsx';
 import { assignProjectColors } from './lib/colors.js';
@@ -26,8 +27,8 @@ export default function App() {
   const [writeError, setWriteError] = useState(null);
 
   const [status, setStatus] = useState('Incomplete');
-  const [project, setProject] = useState('All');
-  const [person, setPerson] = useState('Anyone');
+  const [selectedProjects, setSelectedProjects] = useState(null);
+  const [selectedPeople, setSelectedPeople] = useState(null);
   const [query, setQuery] = useState('');
   const [sortBy, setSortBy] = useState('created');
   const [newTitle, setNewTitle] = useState('');
@@ -78,10 +79,14 @@ export default function App() {
       if (q && !t.name.toLowerCase().includes(q)) return false;
       if (status === 'Incomplete' && t.completed) return false;
       if (status === 'Complete' && !t.completed) return false;
-      if (project !== 'All' && t.projects?.[0]?.name !== project) return false;
-      if (person === 'Unassigned' && t.assignee) return false;
-      if (person !== 'Anyone' && person !== 'Unassigned' && t.assignee?.name !== person)
-        return false;
+      if (selectedProjects !== null) {
+        const names = t.projects?.map((p) => p.name) ?? [];
+        if (!names.some((n) => selectedProjects.includes(n))) return false;
+      }
+      if (selectedPeople !== null) {
+        const assigneeName = t.assignee ? t.assignee.name : 'Unassigned';
+        if (!selectedPeople.includes(assigneeName)) return false;
+      }
       return true;
     });
     const far = '9999-99-99';
@@ -96,12 +101,27 @@ export default function App() {
       return (a.due_on ?? far).localeCompare(b.due_on ?? far);
     });
     return out;
-  }, [tasks, query, status, project, person, sortBy]);
+  }, [tasks, query, status, selectedProjects, selectedPeople, sortBy]);
 
   const selected = tasks.find((t) => t.gid === selectedId) ?? null;
 
   function updateTaskLocal(gid, patch) {
     setTasks((ts) => ts.map((t) => (t.gid === gid ? { ...t, ...patch } : t)));
+  }
+
+  function toggleProject(name) {
+    setSelectedProjects((prev) => {
+      if (prev === null) return projects.map((p) => p.name).filter((n) => n !== name);
+      return prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name];
+    });
+  }
+
+  function togglePerson(name) {
+    setSelectedPeople((prev) => {
+      if (prev === null)
+        return [...people.map((p) => p.name), 'Unassigned'].filter((n) => n !== name);
+      return prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name];
+    });
   }
 
   async function handleToggle(gid, completed) {
@@ -130,11 +150,15 @@ export default function App() {
     const title = newTitle.trim();
     if (!title || !workspaceGid) return;
     setNewTitle('');
-    const targetProject = project !== 'All' ? projectByName.get(project) : projects[0];
-    const assigneeGid =
-      person !== 'Anyone' && person !== 'Unassigned'
-        ? people.find((p) => p.name === person)?.gid
+    const targetProject =
+      selectedProjects && selectedProjects.length === 1
+        ? projectByName.get(selectedProjects[0])
+        : projects[0];
+    const singlePerson =
+      selectedPeople && selectedPeople.length === 1 && selectedPeople[0] !== 'Unassigned'
+        ? selectedPeople[0]
         : null;
+    const assigneeGid = singlePerson ? people.find((p) => p.name === singlePerson)?.gid : null;
     try {
       const created = await createTask({
         name: title,
@@ -176,7 +200,9 @@ export default function App() {
   }
 
   const activeFilterCount =
-    (status !== 'Incomplete' ? 1 : 0) + (project !== 'All' ? 1 : 0) + (person !== 'Anyone' ? 1 : 0);
+    (status !== 'Incomplete' ? 1 : 0) +
+    (selectedProjects !== null ? 1 : 0) +
+    (selectedPeople !== null ? 1 : 0);
   const countLabel = `${filtered.length} ${filtered.length === 1 ? 'task' : 'tasks'}`;
 
   const filterGroups = (
@@ -188,19 +214,21 @@ export default function App() {
         variant="status"
         onSelect={setStatus}
       />
-      <FilterGroup
+      <MultiFilterGroup
         label="Project"
-        options={['All', ...projects.map((p) => p.name)]}
-        value={project}
-        variant="soft"
-        onSelect={setProject}
+        options={projects.map((p) => p.name)}
+        selected={selectedProjects}
+        onToggle={toggleProject}
+        onSelectAll={() => setSelectedProjects(null)}
+        onSelectNone={() => setSelectedProjects([])}
       />
-      <FilterGroup
+      <MultiFilterGroup
         label="Who"
-        options={['Anyone', ...people.map((p) => p.name), 'Unassigned']}
-        value={person}
-        variant="soft"
-        onSelect={setPerson}
+        options={[...people.map((p) => p.name), 'Unassigned']}
+        selected={selectedPeople}
+        onToggle={togglePerson}
+        onSelectAll={() => setSelectedPeople(null)}
+        onSelectNone={() => setSelectedPeople([])}
       />
     </>
   );
