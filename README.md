@@ -1,0 +1,96 @@
+# simple-asana-ui
+
+An Asana dashboard hosted on **Cloudflare Pages**: a static front-end backed by Pages Functions that implement an Asana OAuth 2.0 authorization-code flow and a same-origin API proxy. Each user logs in with their own Asana account; access is restricted server-side to members of one Asana workspace. See [BUILD_SPEC.md](BUILD_SPEC.md) for the full spec.
+
+## Repo layout
+
+```
+├─ public/                     # static UI (Pages "build output directory")
+│  ├─ index.html
+│  ├─ app.js
+│  └─ styles.css
+├─ functions/                  # Cloudflare Pages Functions (auto-detected)
+│  ├─ auth/
+│  │  ├─ login.js              # GET /auth/login — redirect to Asana authorize page
+│  │  ├─ callback.js           # GET /auth/callback — code→token exchange + workspace gate
+│  │  └─ logout.js             # GET /auth/logout — clear session cookies
+│  ├─ api/asana/[[path]].js    # ALL /api/asana/* — proxy to app.asana.com/api/1.0
+│  └─ _lib/cookies.js          # cookie helpers + token refresh
+```
+
+Tokens live in `HttpOnly; Secure; SameSite=Lax` cookies (`asana_at`, `asana_rt`); the client secret lives only in a Pages environment variable. The browser never sees tokens and never calls `app.asana.com` directly.
+
+## Local development
+
+```sh
+npm install
+npm run dev        # wrangler pages dev public (serves static files + functions)
+npm run lint       # ESLint
+npm run format     # Prettier (format:check to verify only)
+npm run build      # compiles functions/ as a validation step (Pages builds them itself on deploy)
+```
+
+For the OAuth flow to work locally you need the env vars below; put them in a `.dev.vars` file (gitignored) and note that Asana requires an HTTPS redirect URI, so full end-to-end login is easiest to test on a deployed preview branch.
+
+## Cloudflare Pages setup (done once, in the dashboard)
+
+1. Create a Pages project connected to this repo. **Build command:** none. **Build output directory:** `public`. Pages auto-detects `functions/`; there is no separate deploy step.
+2. Add environment variables (mark **all as encrypted/secret**), for both Production and Preview as appropriate:
+
+   | Variable                      | Value                                                                                                                                                                                                                            |
+   | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | `ASANA_CLIENT_ID`             | From the Asana developer console → your OAuth app                                                                                                                                                                                |
+   | `ASANA_CLIENT_SECRET`         | From the Asana developer console → your OAuth app                                                                                                                                                                                |
+   | `ASANA_REDIRECT_URI`          | `https://<<YOUR_PAGES_DOMAIN>>/auth/callback`                                                                                                                                                                                    |
+   | `ASANA_ALLOWED_WORKSPACE_GID` | GID of the Inner Excellence workspace (`GET /workspaces` in API explorer)                                                                                                                                                        |
+   | `ASANA_OAUTH_SCOPE`           | Optional. Defaults to `default` (requires "Full permissions" on the app); set space-delimited granular scopes instead if the app is registered with them, e.g. `users:read workspaces:read tasks:read tasks:write projects:read` |
+
+3. Optional defense-in-depth: put Cloudflare Access (Zero Trust, free ≤50 users) in front of the Pages project with your M365/Entra tenant as IdP. Redundant with the workspace gate, but adds a tenant-level login wall.
+
+## Asana developer console setup
+
+1. Create an OAuth app at <https://app.asana.com/0/my-apps>.
+2. Set the app's **redirect URI** to exactly match `ASANA_REDIRECT_URI` — a mismatch (including a trailing slash) fails the flow.
+3. Choose the permission model: either toggle **Full permissions** (and leave `ASANA_OAUTH_SCOPE` unset), or register granular scopes and set `ASANA_OAUTH_SCOPE` to the same list.
+4. **Multi-user caveat:** while an OAuth app is unverified, Asana limits who can authorize it (historically: only members of the app-owning team, or a cap on distinct users) until the app goes through review. If teammates outside the owning team can't log in, check the app's user limit in the developer console — this is an Asana-side setting, not a bug in this code.
+
+## Values the human must fill in
+
+| Placeholder                   | Where                                    |
+| ----------------------------- | ---------------------------------------- |
+| `<<YOUR_PAGES_DOMAIN>>`       | `ASANA_REDIRECT_URI`, Asana app config   |
+| `ASANA_CLIENT_ID`             | Pages env var                            |
+| `ASANA_CLIENT_SECRET`         | Pages env var                            |
+| `ASANA_ALLOWED_WORKSPACE_GID` | Pages env var                            |
+| Scope choice                  | Asana app settings + `ASANA_OAUTH_SCOPE` |
+
+## Manual test steps
+
+Replace `https://app.example.com` with your Pages domain.
+
+1. **Unauthenticated visit:** open the site in a private window, click log in (or visit `/auth/login`) → you are redirected to Asana's authorize page.
+2. **Approve:** authorize the app → you land back on `/` and the dashboard shows your own Asana data.
+3. **Wrong workspace:** log in with an Asana account that is not a member of the allowed workspace → the callback returns a 403 "Not authorized" page and no session cookies are set.
+4. **Silent refresh:** in DevTools → Application → Cookies, delete `asana_at` while keeping `asana_rt`, then trigger any data load → the request still succeeds and a fresh `asana_at` cookie appears (the proxy refreshed the token).
+5. **Logout:** visit `/auth/logout` → cookies are cleared and the next data load gets a 401, sending you back to login.
+
+`curl` checks for the error paths:
+
+```sh
+# 401 — no session cookie
+curl -i https://app.example.com/api/asana/users/me
+# → HTTP/2 401, {"errors":[{"message":"Not authenticated"}]}
+
+# 403 — CSRF/state mismatch on the callback
+curl -i "https://app.example.com/auth/callback?code=x&state=y"
+# → HTTP/2 403, "Not authorized" page
+```
+
+## Front-end contract
+
+The UI in `public/` must follow these conventions (and nothing more):
+
+- Load data with `fetch('/api/asana/<endpoint>')`, e.g. `/api/asana/tasks?assignee=me&workspace=<gid>`.
+- On any `401` from the proxy, redirect the browser to `/auth/login`.
+- A "Log out" control links to `/auth/logout`.
+- No Asana tokens or secrets in front-end code.

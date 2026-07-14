@@ -1,6 +1,11 @@
-// GET /auth/logout (see BUILD_SPEC.md "functions/auth/logout.js").
-// TODO: clear asana_at, asana_rt, oauth_state cookies; 302 to /.
+// GET /auth/logout — clear the session cookies and return to the app.
 
-export async function onRequestGet(_context) {
-  return new Response('Not implemented', { status: 501 });
+import { clearCookie } from '../_lib/cookies.js';
+
+export async function onRequestGet() {
+  const headers = new Headers({ Location: '/' });
+  headers.append('Set-Cookie', clearCookie('asana_at'));
+  headers.append('Set-Cookie', clearCookie('asana_rt'));
+  headers.append('Set-Cookie', clearCookie('oauth_state'));
+  return new Response(null, { status: 302, headers });
 }
