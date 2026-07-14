@@ -105,17 +105,35 @@ export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobil
   return (
     <div
       onClick={() => onOpen(task.gid)}
-      className="grid grid-cols-[22px_minmax(0,1fr)_70px_70px_100px_210px_150px] items-center gap-x-4 py-2.5 cursor-pointer hover:bg-[#faf8f4] transition-colors"
+      className="grid grid-cols-[22px_minmax(0,1fr)_70px_70px_100px_150px] items-center gap-x-4 py-2.5 px-3 -mx-3 rounded-lg cursor-pointer hover:bg-[#faf8f4] transition-colors"
     >
       <Checkbox done={done} onToggle={() => onToggle(task.gid, !done)} />
 
-      <span
-        className={`min-w-0 font-medium text-[15px] leading-snug truncate ${
-          done ? 'text-fainter line-through' : 'text-ink'
-        }`}
-      >
-        {task.name}
-      </span>
+      {/* Task Name & Project Dots */}
+      <div className="min-w-0 flex items-center gap-2">
+        {task.projects && task.projects.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-none">
+            {task.projects.map((p) => {
+              const color = projectColors.get(p.gid) ?? '#b8b2a8';
+              return (
+                <span
+                  key={p.gid}
+                  className="w-2.5 h-2.5 rounded-full flex-none"
+                  style={{ backgroundColor: color }}
+                  title={p.name}
+                />
+              );
+            })}
+          </div>
+        )}
+        <span
+          className={`min-w-0 font-medium text-[15px] leading-snug truncate ${
+            done ? 'text-fainter line-through' : 'text-ink'
+          }`}
+        >
+          {task.name}
+        </span>
+      </div>
 
       <span className="font-medium text-xs text-muted">
         {formatDateShort(task.created_at ? task.created_at.split('T')[0] : null)}
@@ -144,26 +162,6 @@ export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobil
           </span>
         ) : (
           <span className="text-[10px] text-placeholder italic">-</span>
-        )}
-      </span>
-
-      <span className="flex items-center gap-1 flex-wrap min-w-0">
-        {task.projects && task.projects.length > 0 ? (
-          task.projects.map((p) => {
-            const color = projectColors.get(p.gid) ?? '#b8b2a8';
-            return (
-              <span
-                key={p.gid}
-                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#faf8f4] border border-border-soft truncate max-w-[125px]"
-                style={{ borderLeftColor: color, borderLeftWidth: 3 }}
-                title={p.name}
-              >
-                {p.name}
-              </span>
-            );
-          })
-        ) : (
-          <span className="font-medium text-xs text-danger italic">No Project</span>
         )}
       </span>
 

@@ -36,6 +36,7 @@ export default function TaskDetailModal({
   onDueChange,
   onAssigneeChange,
   onCustomFieldChange,
+  onDelete,
   globalStatusField,
   people = [],
   isMobile,
@@ -446,6 +447,30 @@ export default function TaskDetailModal({
               </>
             )}
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm('Delete this task? It will be moved to the Asana trash.')) {
+                onDelete(task.gid);
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-[#fecaca] bg-[#fef2f2] text-[12px] font-semibold text-[#dc2626] hover:bg-[#fee2e2] transition-colors cursor-pointer select-none"
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+            <span>Delete</span>
+          </button>
         </div>
         <div className="flex-1 overflow-auto px-4.5 pt-5 pb-7 flex flex-col gap-5">
           <div className="flex items-center gap-3">
@@ -602,6 +627,30 @@ export default function TaskDetailModal({
                 <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
               </svg>
             )}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm('Delete this task? It will be moved to the Asana trash.')) {
+                onDelete(task.gid);
+              }
+            }}
+            title="Delete task"
+            className="flex-none flex items-center justify-center w-[30px] h-[30px] border-0 bg-[#fef2f2] rounded-lg text-[#dc2626] hover:bg-[#fee2e2] hover:text-[#b91c1c] cursor-pointer transition-colors"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
           </button>
           <button
             type="button"

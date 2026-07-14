@@ -20,9 +20,16 @@ import {
   addTaskProject,
   removeTaskProject,
   setTaskCustomField,
+  deleteTask,
 } from './lib/api.js';
 
 const STATUS_OPTIONS = ['Incomplete', 'Complete', 'All'];
+
+function defaultDueDate() {
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+  return d.toISOString().slice(0, 10);
+}
 
 export default function App() {
   const [workspaceGid, setWorkspaceGid] = useState(null);
@@ -90,6 +97,10 @@ export default function App() {
     }
   });
   const [newTitle, setNewTitle] = useState('');
+  const [newProject, setNewProject] = useState('');
+  const [newDueDate, setNewDueDate] = useState(defaultDueDate);
+  const [newAssignee, setNewAssignee] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
   const [selectedId, setSelectedId] = useState(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -517,6 +528,18 @@ export default function App() {
     }
   }
 
+  async function handleDeleteTask(gid) {
+    const prev = tasks;
+    setTasks((ts) => ts.filter((t) => t.gid !== gid));
+    handleSelectId(null);
+    try {
+      await deleteTask(gid);
+    } catch {
+      setTasks(prev);
+      setWriteError("Couldn't delete the task in Asana.");
+    }
+  }
+
   async function handleAddTask() {
     if (projects.length === 0) {
       setWriteError('Cannot create a task because there are no projects in the workspace.');
@@ -524,32 +547,113 @@ export default function App() {
     }
     const title = newTitle.trim();
     if (!title || !workspaceGid) return;
+    const targetProject = projects.find((p) => p.gid === newProject);
+    if (!targetProject) {
+      setWriteError('Please select a project.');
+      return;
+    }
+    const assigneeGid = newAssignee || null;
+    if (!assigneeGid) {
+      setWriteError('Please select an assignee.');
+      return;
+    }
+    const dueOn = newDueDate || null;
+    if (!dueOn) {
+      setWriteError('Please select a due date.');
+      return;
+    }
+    // Build custom_fields to set status to UNKNOWN
+    const unknownOption = globalStatusField?.enum_options?.find(
+      (opt) => opt.name === 'UNKNOWN - PLEASE CHANGE',
+    );
+    const customFields =
+      globalStatusField && unknownOption ? { [globalStatusField.gid]: unknownOption.gid } : undefined;
     setNewTitle('');
-    const targetProject =
-      selectedProjects && selectedProjects.length === 1
-        ? projectByName.get(selectedProjects[0])
-        : projects[0];
-    const singlePerson =
-      selectedPeople && selectedPeople.length === 1 && selectedPeople[0] !== 'Unassigned'
-        ? selectedPeople[0]
-        : null;
-    const assigneeGid = singlePerson ? people.find((p) => p.name === singlePerson)?.gid : null;
+    setShowAddForm(false);
     try {
       const created = await createTask({
         name: title,
         workspaceGid,
-        projectGid: targetProject?.gid,
+        projectGid: targetProject.gid,
         assigneeGid,
+        dueOn,
+        customFields,
       });
-      setTasks((ts) => [
-        {
-          ...created,
-          created_at: created.created_at || new Date().toISOString(),
-          projects: targetProject ? [targetProject] : [],
-          assignee: assigneeGid ? people.find((p) => p.gid === assigneeGid) : null,
-        },
-        ...ts,
-      ]);
+      const assigneePerson = people.find((p) => p.gid === assigneeGid);
+      // Build local custom_fields representation for the new task
+      let localCustomFields = created.custom_fields ?? [];
+      if (globalStatusField && unknownOption && !localCustomFields.some((f) => f.gid === globalStatusField.gid)) {
+        localCustomFields = [
+          ...localCustomFields,
+          {
+            ...globalStatusField,
+            enum_value: unknownOption,
+            display_value: unknownOption.name,
+          },
+        ];
+      }
+      const taskObject = {
+        ...created,
+        created_at: created.created_at || new Date().toISOString(),
+        due_on: dueOn,
+        projects: [targetProject],
+        assignee: assigneePerson || null,
+        custom_fields: localCustomFields,
+      };
+      setTasks((ts) => [taskObject, ...ts]);
+
+      // Check if the newly created task is visible with the current filters
+      const q = query.trim().toLowerCase();
+      const matchesQuery = !q || taskObject.name.toLowerCase().includes(q);
+
+      let matchesStatus = true;
+      if (status === 'Incomplete' && taskObject.completed) matchesStatus = false;
+      if (status === 'Complete' && !taskObject.completed) matchesStatus = false;
+
+      let matchesProjects = true;
+      if (selectedProjects !== null) {
+        const names = taskObject.projects?.map((p) => p.name) ?? [];
+        matchesProjects = names.some((n) => selectedProjects.includes(n));
+      }
+
+      let matchesPeople = true;
+      if (selectedPeople !== null) {
+        const assigneeName = taskObject.assignee ? taskObject.assignee.name : 'Unassigned';
+        matchesPeople = selectedPeople.includes(assigneeName);
+      }
+
+      let matchesCustomStatuses = true;
+      if (selectedCustomStatuses !== null) {
+        const taskStatus =
+          taskObject.custom_fields?.find((f) => f.name?.toLowerCase() === 'status')?.enum_value?.name ??
+          'None';
+        matchesCustomStatuses = selectedCustomStatuses.includes(taskStatus);
+      }
+
+      if (!matchesQuery || !matchesStatus || !matchesProjects || !matchesPeople || !matchesCustomStatuses) {
+        setWriteError({
+          type: 'warning',
+          message: (
+            <span className="flex items-center gap-2">
+              Task is hidden by current filters.
+              <button
+                type="button"
+                onClick={() => {
+                  setStatus('Incomplete');
+                  setSelectedProjects(null);
+                  setSelectedPeople(null);
+                  setSelectedCustomStatuses(null);
+                  setQuery('');
+                  setWriteError(null);
+                }}
+                className="underline font-bold hover:opacity-80 cursor-pointer ml-1"
+              >
+                Clear filters
+              </button>
+            </span>
+          ),
+        });
+      }
     } catch {
       setNewTitle(title);
       setWriteError("Couldn't create the task in Asana.");
@@ -582,9 +686,13 @@ export default function App() {
     (selectedCustomStatuses !== null ? 1 : 0);
   const countLabel = `${filtered.length} ${filtered.length === 1 ? 'task' : 'tasks'} in this view`;
 
+  const isObjectToast = writeError && typeof writeError === 'object' && 'message' in writeError;
+  const toastMsg = isObjectToast ? writeError.message : writeError;
+  const toastType = isObjectToast ? writeError.type : 'error';
+
   const filterGroups = (
     <>
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3.5 md:gap-2">
+      <div className="flex flex-col gap-4">
         <FilterGroup
           label="Show"
           options={STATUS_OPTIONS}
@@ -592,8 +700,8 @@ export default function App() {
           variant="status"
           onSelect={setStatus}
         />
-        <div className="hidden md:flex items-center gap-2">
-          <span className="font-semibold text-[11px] tracking-wider uppercase text-fainter">
+        <div className="hidden md:flex items-center gap-2.5">
+          <span className="w-[58px] flex-none font-semibold text-[11px] tracking-wider uppercase text-faint">
             Sort
           </span>
           <select
@@ -616,7 +724,10 @@ export default function App() {
       </div>
       <MultiFilterGroup
         label="Project"
-        options={projects.map((p) => p.name)}
+        options={projects.map((p) => ({
+          name: p.name,
+          color: projectColors.get(p.gid),
+        }))}
         selected={selectedProjects}
         onToggle={toggleProject}
         onSelectAll={() => setSelectedProjects(null)}
@@ -643,9 +754,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-panel py-6 px-4 md:px-8">
-      <div className="max-w-6xl mx-auto flex flex-col gap-6">
+      <div className="max-w-6xl mx-auto flex flex-col md:grid md:grid-cols-[350px_1fr] gap-6 items-start">
         {/* Card A: Top Bar */}
-        <div className="bg-white rounded-xl shadow-xs border border-border-soft p-4 md:p-6 flex flex-col gap-4">
+        <div className="bg-white rounded-xl shadow-xs border border-border-soft p-4 md:p-6 flex flex-col gap-4 md:col-span-2 md:col-start-1 md:row-start-1 w-full">
           <div className="flex items-baseline justify-between gap-3">
             <h1 className="m-0 font-bold text-[17px] md:text-[22px] text-ink tracking-tight">
               Inner Excellence Tasks
@@ -751,21 +862,20 @@ export default function App() {
         <div
           className={`${
             filtersOpen ? 'flex' : 'hidden'
-          } md:flex flex-col gap-4 bg-white rounded-xl shadow-xs border border-border-soft p-4 md:p-6`}
+          } md:flex flex-col gap-4 bg-white rounded-xl shadow-xs border border-border-soft p-4 md:p-6 md:col-start-1 md:row-start-2 md:sticky md:top-6 w-full`}
         >
           {filterGroups}
         </div>
 
         {/* Card C: Task List */}
-        <div className="bg-white rounded-xl shadow-xs border border-border-soft overflow-hidden">
+        <div className="bg-white rounded-xl shadow-xs border border-border-soft overflow-hidden md:col-start-2 md:row-start-2 w-full">
           {/* Desktop Table Headers */}
-          <div className="hidden md:grid grid-cols-[22px_minmax(0,1fr)_70px_70px_100px_210px_150px] items-center gap-x-4 px-6 pt-4 pb-3 border-b border-border-soft font-semibold text-[11px] tracking-wider uppercase text-fainter bg-slate-50/10">
+          <div className="hidden md:grid grid-cols-[22px_minmax(0,1fr)_70px_70px_100px_150px] items-center gap-x-4 px-6 pt-4 pb-3 border-b border-border-soft font-semibold text-[11px] tracking-wider uppercase text-fainter bg-slate-50/10">
             <span />
             {renderHeader('Task', 'name')}
             {renderHeader('Created', 'created')}
             {renderHeader('Due', 'due')}
             {renderHeader('Status', 'status')}
-            {renderHeader('Project', 'project')}
             {renderHeader('Who', 'assignee')}
           </div>
 
@@ -773,11 +883,108 @@ export default function App() {
             <div className="md:hidden pt-2.5 pb-1 px-0.5 font-semibold text-[11px] tracking-wider uppercase text-fainter">
               {countLabel}
             </div>
-            {filtered.map((t, idx) => (
-              <div
-                key={t.gid}
-                className={`border-b border-border-soft ${idx === filtered.length - 1 ? 'border-b-0' : ''}`}
+
+            {!showAddForm ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setNewProject(
+                    selectedProjects && selectedProjects.length === 1
+                      ? projectByName.get(selectedProjects[0])?.gid || ''
+                      : projects[0]?.gid || '',
+                  );
+                  setNewAssignee(
+                    selectedPeople && selectedPeople.length === 1 && selectedPeople[0] !== 'Unassigned'
+                      ? people.find((p) => p.name === selectedPeople[0])?.gid || ''
+                      : '',
+                  );
+                  setNewDueDate(defaultDueDate());
+                  setShowAddForm(true);
+                }}
+                className={`flex items-center gap-${isMobile ? '[11px] my-3 px-3.5 py-3 bg-panel border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)]' : '4 pt-3.5 pb-4 border-b border-border-soft mb-2'} w-full text-left cursor-pointer hover:opacity-80`}
               >
+                <span className={isMobile
+                  ? 'w-[26px] h-[26px] flex-none rounded-full bg-accent flex items-center justify-center text-white text-lg font-semibold leading-none'
+                  : 'w-[22px] h-[22px] flex-none rounded-lg border-2 border-dashed border-[#d7d0c5] flex items-center justify-center text-[#bcb5a9] text-base leading-none'
+                }>
+                  +
+                </span>
+                <span className="text-muted font-medium text-[15px]">Add a task…</span>
+              </button>
+            ) : (
+              <div className={`${isMobile ? 'my-3 px-3.5 py-3 bg-panel border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)]' : 'pt-3.5 pb-4 border-b border-border-soft mb-2'}`}>
+                <div className="flex items-center gap-4">
+                  <span className={isMobile
+                    ? 'w-[26px] h-[26px] flex-none rounded-full bg-accent flex items-center justify-center text-white text-lg font-semibold leading-none'
+                    : 'w-[22px] h-[22px] flex-none rounded-lg border-2 border-dashed border-[#d7d0c5] flex items-center justify-center text-[#bcb5a9] text-base leading-none'
+                  }>
+                    +
+                  </span>
+                  <input
+                    type="text"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+                    placeholder="Task name…"
+                    autoFocus
+                    className="flex-1 min-w-0 border-0 outline-none bg-transparent font-semibold text-[15px] text-ink"
+                  />
+                </div>
+                <div className={`flex flex-wrap items-center gap-2 mt-2.5 ${isMobile ? '' : 'ml-[38px]'}`}>
+                  <select
+                    value={newProject}
+                    onChange={(e) => setNewProject(e.target.value)}
+                    className="text-[13px] px-2 py-1.5 rounded-lg border border-border bg-panel text-ink font-medium outline-none cursor-pointer"
+                  >
+                    <option value="">Project…</option>
+                    {projects.map((p) => (
+                      <option key={p.gid} value={p.gid}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={newAssignee}
+                    onChange={(e) => setNewAssignee(e.target.value)}
+                    className="text-[13px] px-2 py-1.5 rounded-lg border border-border bg-panel text-ink font-medium outline-none cursor-pointer"
+                  >
+                    <option value="">Assignee…</option>
+                    {people.map((p) => (
+                      <option key={p.gid} value={p.gid}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="date"
+                    value={newDueDate}
+                    onChange={(e) => setNewDueDate(e.target.value)}
+                    className="text-[13px] px-2 py-1.5 rounded-lg border border-border bg-panel text-ink font-medium outline-none cursor-pointer"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddTask}
+                    disabled={!newTitle.trim() || !newProject || !newAssignee || !newDueDate}
+                    className="text-[13px] px-3 py-1.5 rounded-lg bg-accent text-white font-semibold hover:opacity-90 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    Create
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddForm(false);
+                      setNewTitle('');
+                    }}
+                    className="text-[13px] px-2 py-1.5 text-muted hover:text-ink font-medium cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {filtered.map((t) => (
+              <div key={t.gid}>
                 <TaskRow
                   task={t}
                   projectColors={projectColors}
@@ -792,43 +999,13 @@ export default function App() {
                 Nothing here with these filters.
               </div>
             )}
-
-            {isMobile ? (
-              <div className="flex items-center gap-[11px] my-3 px-3.5 py-3 bg-panel border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)]">
-                <span className="w-[26px] h-[26px] flex-none rounded-full bg-accent flex items-center justify-center text-white text-lg font-semibold leading-none">
-                  +
-                </span>
-                <input
-                  type="text"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-                  placeholder="Add a task…"
-                  className="flex-1 min-w-0 border-0 outline-none bg-transparent font-semibold text-[15px] text-ink"
-                />
-              </div>
-            ) : (
-              <div className="flex items-center gap-4 pt-3.5 pb-4">
-                <span className="w-[22px] h-[22px] flex-none rounded-lg border-2 border-dashed border-[#d7d0c5] flex items-center justify-center text-[#bcb5a9] text-base leading-none">
-                  +
-                </span>
-                <input
-                  type="text"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-                  placeholder="Add a task…"
-                  className="flex-1 border-0 outline-none bg-transparent font-medium text-[15px] text-ink"
-                />
-              </div>
-            )}
           </div>
         </div>
       </div>
 
-      {writeError && (
-        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+20px)] left-1/2 -translate-x-1/2 z-[60] max-w-[90vw] bg-ink text-white font-medium text-[13px] px-4 py-2.5 rounded-full shadow-[0_8px_24px_rgba(40,32,20,0.3)] whitespace-nowrap overflow-hidden text-ellipsis">
-          {writeError}
+      {toastMsg && (
+        <div className={`fixed bottom-[calc(env(safe-area-inset-bottom)+20px)] left-1/2 -translate-x-1/2 z-[60] max-w-[90vw] ${toastType === 'warning' ? 'bg-[#fbbf24] text-[#1c1917]' : 'bg-danger text-white'} font-semibold text-[14px] px-5 py-3 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.2)] flex items-center gap-2 whitespace-nowrap`}>
+          {toastMsg}
         </div>
       )}
 
@@ -846,6 +1023,7 @@ export default function App() {
           onDueChange={handleDueChange}
           onAssigneeChange={handleAssigneeChange}
           onCustomFieldChange={handleCustomFieldChange}
+          onDelete={handleDeleteTask}
           globalStatusField={globalStatusField}
           people={people}
           isMobile={isMobile}

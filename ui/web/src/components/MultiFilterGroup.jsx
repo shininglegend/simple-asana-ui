@@ -29,7 +29,9 @@ export default function MultiFilterGroup({
         <button type="button" className={pillClasses(isNone)} onClick={onSelectNone}>
           None
         </button>
-        {options.map((name) => {
+        {options.map((opt) => {
+          const name = typeof opt === 'object' ? opt.name : opt;
+          const color = typeof opt === 'object' ? opt.color : null;
           const active = isAll || (Array.isArray(selected) && selected.includes(name));
           return (
             <button
@@ -38,7 +40,13 @@ export default function MultiFilterGroup({
               className={pillClasses(active)}
               onClick={() => onToggle(name)}
             >
-              {name}
+              {color && (
+                <span
+                  className="w-2.5 h-2.5 rounded-full inline-block mr-1.5 align-middle -mt-0.5"
+                  style={{ backgroundColor: color }}
+                />
+              )}
+              <span>{name}</span>
             </button>
           );
         })}

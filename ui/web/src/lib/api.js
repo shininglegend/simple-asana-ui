@@ -98,17 +98,18 @@ export function setTaskName(taskGid, name) {
   });
 }
 
-export function createTask({ name, workspaceGid, projectGid, assigneeGid }) {
+export function createTask({ name, workspaceGid, projectGid, assigneeGid, dueOn, customFields }) {
+  const data = {
+    name,
+    workspace: workspaceGid,
+    projects: projectGid ? [projectGid] : [],
+    assignee: assigneeGid ?? null,
+  };
+  if (dueOn) data.due_on = dueOn;
+  if (customFields) data.custom_fields = customFields;
   return apiFetch('tasks', {
     method: 'POST',
-    body: JSON.stringify({
-      data: {
-        name,
-        workspace: workspaceGid,
-        projects: projectGid ? [projectGid] : [],
-        assignee: assigneeGid ?? null,
-      },
-    }),
+    body: JSON.stringify({ data }),
   });
 }
 
@@ -152,4 +153,8 @@ export function setTaskCustomField(taskGid, customFieldGid, enumOptionGid) {
       },
     }),
   });
+}
+
+export function deleteTask(taskGid) {
+  return apiFetch(`tasks/${taskGid}`, { method: 'DELETE' });
 }
