@@ -26,14 +26,112 @@ export default function App() {
   const [error, setError] = useState(null);
   const [writeError, setWriteError] = useState(null);
 
-  const [status, setStatus] = useState('Incomplete');
-  const [selectedProjects, setSelectedProjects] = useState(null);
-  const [selectedPeople, setSelectedPeople] = useState(null);
-  const [query, setQuery] = useState('');
-  const [sortBy, setSortBy] = useState('created');
+  const [status, setStatus] = useState(() => {
+    try {
+      const val = localStorage.getItem('asana_filter_status');
+      return val !== null ? val : 'Incomplete';
+    } catch {
+      return 'Incomplete';
+    }
+  });
+  const [selectedProjects, setSelectedProjects] = useState(() => {
+    try {
+      const val = localStorage.getItem('asana_filter_projects');
+      return val !== null ? JSON.parse(val) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [selectedPeople, setSelectedPeople] = useState(() => {
+    try {
+      const val = localStorage.getItem('asana_filter_people');
+      return val !== null ? JSON.parse(val) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [query, setQuery] = useState(() => {
+    try {
+      const val = localStorage.getItem('asana_filter_query');
+      return val !== null ? val : '';
+    } catch {
+      return '';
+    }
+  });
+  const [sortBy, setSortBy] = useState(() => {
+    try {
+      const val = localStorage.getItem('asana_filter_sortBy');
+      return val !== null ? val : 'created';
+    } catch {
+      return 'created';
+    }
+  });
   const [newTitle, setNewTitle] = useState('');
   const [selectedId, setSelectedId] = useState(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(() => {
+    try {
+      const val = localStorage.getItem('asana_filters_open');
+      return val !== null ? JSON.parse(val) : false;
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('asana_filter_status', status);
+    } catch (e) {
+      console.error('Error saving status filter:', e);
+    }
+  }, [status]);
+
+  useEffect(() => {
+    try {
+      if (selectedProjects === null) {
+        localStorage.removeItem('asana_filter_projects');
+      } else {
+        localStorage.setItem('asana_filter_projects', JSON.stringify(selectedProjects));
+      }
+    } catch (e) {
+      console.error('Error saving projects filter:', e);
+    }
+  }, [selectedProjects]);
+
+  useEffect(() => {
+    try {
+      if (selectedPeople === null) {
+        localStorage.removeItem('asana_filter_people');
+      } else {
+        localStorage.setItem('asana_filter_people', JSON.stringify(selectedPeople));
+      }
+    } catch (e) {
+      console.error('Error saving people filter:', e);
+    }
+  }, [selectedPeople]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('asana_filter_query', query);
+    } catch (e) {
+      console.error('Error saving query filter:', e);
+    }
+  }, [query]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('asana_filter_sortBy', sortBy);
+    } catch (e) {
+      console.error('Error saving sortBy:', e);
+    }
+  }, [sortBy]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('asana_filters_open', JSON.stringify(filtersOpen));
+    } catch (e) {
+      console.error('Error saving filtersOpen state:', e);
+    }
+  }, [filtersOpen]);
 
   const isMobile = useIsMobile();
 
@@ -235,11 +333,11 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="min-h-screen flex flex-col max-w-[700px] mx-auto bg-white">
-        <div className="sticky top-0 z-[5] bg-panel-alt border-b border-border px-4 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] md:px-6.5 md:py-5.5 flex flex-col gap-3.5">
+      <div className="min-h-screen flex flex-col md:max-w-6xl md:mx-auto bg-white">
+        <div className="sticky top-0 z-[5] bg-panel-alt border-b border-border px-4 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] md:px-6 md:py-5.5 flex flex-col gap-3.5">
           <div className="flex items-baseline justify-between gap-3">
             <h1 className="m-0 font-bold text-[17px] md:text-[22px] text-ink tracking-tight">
-              Jim&rsquo;s Tasks
+              KISS Tasks
             </h1>
             <div className="flex items-center gap-4">
               <span className="hidden md:inline font-semibold text-[13px] text-faint">
@@ -335,23 +433,15 @@ export default function App() {
           </div>
         </div>
 
-        <div className="hidden md:flex items-center gap-3.5 px-8 pt-2.5 pb-2 border-b border-border-soft">
-          <span className="w-[22px] flex-none" />
-          <span className="flex-1 min-w-0 font-semibold text-[11px] tracking-wider uppercase text-fainter">
-            Task
-          </span>
-          <span className="w-[90px] flex-none font-semibold text-[11px] tracking-wider uppercase text-fainter">
-            Due
-          </span>
-          <span className="w-[110px] flex-none font-semibold text-[11px] tracking-wider uppercase text-fainter">
-            Project
-          </span>
-          <span className="w-[78px] flex-none text-right font-semibold text-[11px] tracking-wider uppercase text-fainter">
-            Who
-          </span>
+        <div className="hidden md:grid grid-cols-[22px_minmax(0,1fr)_96px_210px_150px] items-center gap-x-4 px-6 pt-2.5 pb-2 border-b border-border-soft font-semibold text-[11px] tracking-wider uppercase text-fainter">
+          <span />
+          <span>Task</span>
+          <span>Due</span>
+          <span>Project</span>
+          <span>Who</span>
         </div>
 
-        <div className="flex-1 overflow-auto px-4 md:px-6.5 py-1.5">
+        <div className="flex-1 overflow-auto px-4 md:px-6 py-1.5">
           <div className="md:hidden pt-2.5 pb-1 px-0.5 font-semibold text-[11px] tracking-wider uppercase text-fainter">
             {countLabel}
           </div>
@@ -387,7 +477,7 @@ export default function App() {
               />
             </div>
           ) : (
-            <div className="flex items-center gap-3.5 px-1.5 pt-3.5 pb-5">
+            <div className="flex items-center gap-4 pt-3.5 pb-5">
               <span className="w-[22px] h-[22px] flex-none rounded-lg border-2 border-dashed border-[#d7d0c5] flex items-center justify-center text-[#bcb5a9] text-base leading-none">
                 +
               </span>
