@@ -31,6 +31,25 @@ function defaultDueDate() {
   return d.toISOString().slice(0, 10);
 }
 
+const getSortLabel = (val) => {
+  switch (val) {
+    case 'created':
+      return 'Newest';
+    case 'due':
+      return 'Due date';
+    case 'status':
+      return 'Status';
+    case 'project':
+      return 'Project';
+    case 'name':
+      return 'Name';
+    case 'assignee':
+      return 'Who';
+    default:
+      return 'Newest';
+  }
+};
+
 export default function App() {
   const [workspaceGid, setWorkspaceGid] = useState(null);
   const [projects, setProjects] = useState([]);
@@ -813,11 +832,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setFiltersOpen((o) => !o)}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold text-[13px] border-[1.5px] transition-colors ${
-                filtersOpen || activeFilterCount
-                  ? 'bg-highlight border-accent text-accent'
-                  : 'bg-panel border-border text-ink-soft'
-              }`}
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold text-[13px] border-[1.5px] bg-panel border-border text-ink-soft hover:bg-panel-alt transition-colors"
             >
               <svg
                 width="14"
@@ -846,10 +861,24 @@ export default function App() {
                 ⌄
               </span>
             </button>
-            <div className="ml-auto flex items-center gap-2">
-              <span className="font-semibold text-[11px] tracking-wider uppercase text-fainter">
-                Sort
-              </span>
+
+            <div className="relative">
+              <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold text-[13px] border-[1.5px] bg-panel border-border text-ink-soft">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M7 20V4M3 8l4-4 4 4M17 4v16m-4-4 4 4 4-4" />
+                </svg>
+                <span>Sort: {getSortLabel(sortBy)}</span>
+                <span className="text-[13px] leading-none">⌄</span>
+              </div>
               <select
                 value={sortBy}
                 onChange={(e) => {
@@ -857,7 +886,7 @@ export default function App() {
                   setSortBy(newSortBy);
                   setSortOrder(newSortBy === 'created' ? 'desc' : 'asc');
                 }}
-                className="appearance-none border-[1.5px] border-border bg-panel rounded-full pl-3.5 pr-7 py-2 font-semibold text-[13px] text-ink cursor-pointer"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer font-sans"
               >
                 <option value="created">Newest</option>
                 <option value="due">Due date</option>
@@ -915,7 +944,7 @@ export default function App() {
                   setNewDueDate(defaultDueDate());
                   setShowAddForm(true);
                 }}
-                className={`flex items-center gap-${isMobile ? '[11px] my-3 px-3.5 py-3 bg-panel border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)]' : '4 pt-3.5 pb-4 border-b border-border-soft mb-2'} w-full text-left cursor-pointer hover:opacity-80`}
+                className={`flex items-center gap-${isMobile ? '[15px] my-3 px-3.5 py-3 bg-panel border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)]' : '5 pt-3.5 pb-4 border-b border-border-soft mb-2'} w-full text-left cursor-pointer hover:opacity-80`}
               >
                 <span
                   className={

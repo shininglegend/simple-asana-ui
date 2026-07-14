@@ -32,31 +32,45 @@ export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobil
     task.custom_fields?.find((f) => f.name?.toLowerCase() === 'status')?.enum_value || null;
 
   if (isMobile) {
+    const createdDate = formatDateShort(task.created_at ? task.created_at.split('T')[0] : null);
+    const assigneeText = assigneeName ? `Assigned to ${assigneeName}` : 'Unassigned';
+
     return (
       <div
         onClick={() => onOpen(task.gid)}
-        className="flex items-center gap-[11px] py-2.5 px-0.5 cursor-pointer"
+        className="flex items-start gap-3 py-3 px-0.5 cursor-pointer"
       >
-        <Checkbox done={done} onToggle={() => onToggle(task.gid, !done)} size={24} />
-        <div className="flex-1 min-w-0 flex flex-col gap-[3px]">
+        <div className="flex-none pt-[1px]">
+          <Checkbox done={done} onToggle={() => onToggle(task.gid, !done)} size={22} />
+        </div>
+        <div className="flex-1 min-w-0 flex flex-col gap-1">
           <span
-            className={`font-medium text-[15px] leading-[1.35] truncate ${
+            className={`font-semibold text-base leading-snug break-words ${
               done ? 'text-fainter line-through' : 'text-ink'
             }`}
           >
             {task.name}
           </span>
-          <div className="flex items-center gap-[9px] flex-wrap">
-            <span
-              className={`font-semibold text-xs ${
-                overdue ? 'text-danger' : done ? 'text-placeholder' : 'text-muted'
-              }`}
-            >
-              {formatDateShort(task.due_on)}
-            </span>
+          <div className="text-[13px] text-muted font-normal">
+            {assigneeText} • {createdDate}
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+            {task.due_on && (
+              <span
+                className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold border truncate ${
+                  overdue
+                    ? 'bg-danger/10 text-danger border-danger/20'
+                    : done
+                      ? 'bg-panel border-border-soft text-placeholder'
+                      : 'bg-panel border-border-soft text-muted'
+                }`}
+              >
+                Due {formatDateShort(task.due_on)}
+              </span>
+            )}
             {currentStatus && (
               <span
-                className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold border truncate max-w-[90px]"
+                className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold border truncate max-w-[120px]"
                 style={{
                   backgroundColor: getStatusStyle(currentStatus.name, currentStatus.color).bg,
                   color: getStatusStyle(currentStatus.name, currentStatus.color).text,
@@ -66,36 +80,29 @@ export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobil
                 {currentStatus.name}
               </span>
             )}
-            <span className="flex items-center gap-1.5 flex-wrap min-w-0">
-              {task.projects && task.projects.length > 0 ? (
-                task.projects.map((p) => {
-                  const color = projectColors.get(p.gid) ?? '#b8b2a8';
-                  return (
-                    <span key={p.gid} className="inline-flex items-center gap-[4px] min-w-0">
-                      <span
-                        className="w-2 h-2 rounded-full flex-none"
-                        style={{ background: color }}
-                      />
-                      <span className="font-medium text-xs text-muted truncate max-w-[80px]">
-                        {p.name}
-                      </span>
+            {task.projects && task.projects.length > 0 ? (
+              task.projects.map((p) => {
+                const color = projectColors.get(p.gid) ?? '#b8b2a8';
+                return (
+                  <span
+                    key={p.gid}
+                    className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-panel border border-border-soft min-w-0 text-[11px]"
+                  >
+                    <span
+                      className="w-1.5 h-1.5 rounded-full flex-none"
+                      style={{ backgroundColor: color }}
+                    />
+                    <span className="font-medium text-muted truncate max-w-[100px]" title={p.name}>
+                      {p.name}
                     </span>
-                  );
-                })
-              ) : (
-                <span className="font-medium text-xs text-danger italic">No Project</span>
-              )}
-            </span>
-            <span
-              className={`font-medium text-xs ${
-                assigneeName ? 'text-muted' : 'text-danger italic'
-              }`}
-            >
-              {assigneeName ?? 'Unassigned'}
-            </span>
-            <span className="font-medium text-xs text-muted">
-              Created {formatDateShort(task.created_at ? task.created_at.split('T')[0] : null)}
-            </span>
+                  </span>
+                );
+              })
+            ) : (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-panel border border-border-soft text-[11px] font-medium text-danger/80 italic">
+                No Project
+              </span>
+            )}
           </div>
         </div>
       </div>
