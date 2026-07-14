@@ -5,6 +5,8 @@ import TaskRow from './components/TaskRow.jsx';
 import TaskDetailModal from './components/TaskDetailModal.jsx';
 import { assignProjectColors, STATUS_OPTION_STYLES } from './lib/colors.js';
 import { useIsMobile } from './lib/useIsMobile.js';
+import { usePersistentState } from './lib/usePersistentState.js';
+import { taskMatchesFilters, NO_STATUS } from './lib/filterTasks.js';
 import {
   getMe,
   getProjects,
@@ -31,22 +33,18 @@ function defaultDueDate() {
   return d.toISOString().slice(0, 10);
 }
 
-const getSortLabel = (val) => {
+const getSortLabel = (val, order) => {
   switch (val) {
     case 'created':
-      return 'Newest';
+      return order === 'asc' ? 'Oldest' : 'Newest';
     case 'due':
       return 'Due date';
     case 'status':
       return 'Status';
-    case 'project':
-      return 'Project';
     case 'name':
-      return 'Name';
-    case 'assignee':
-      return 'Who';
+      return order === 'asc' ? 'A-Z' : 'Z-A';
     default:
-      return 'Newest';
+      return order === 'asc' ? 'Oldest' : 'Newest';
   }
 };
 
@@ -59,61 +57,19 @@ export default function App() {
   const [error, setError] = useState(null);
   const [writeError, setWriteError] = useState(null);
 
-  const [status, setStatus] = useState(() => {
-    try {
-      const val = localStorage.getItem('asana_filter_status');
-      return val !== null ? val : 'Incomplete';
-    } catch {
-      return 'Incomplete';
-    }
+  const [status, setStatus] = usePersistentState('asana_filter_status', 'Incomplete', {
+    raw: true,
   });
-  const [selectedProjects, setSelectedProjects] = useState(() => {
-    try {
-      const val = localStorage.getItem('asana_filter_projects');
-      return val !== null ? JSON.parse(val) : null;
-    } catch {
-      return null;
-    }
-  });
-  const [selectedPeople, setSelectedPeople] = useState(() => {
-    try {
-      const val = localStorage.getItem('asana_filter_people');
-      return val !== null ? JSON.parse(val) : null;
-    } catch {
-      return null;
-    }
-  });
-  const [selectedCustomStatuses, setSelectedCustomStatuses] = useState(() => {
-    try {
-      const val = localStorage.getItem('asana_filter_custom_statuses');
-      return val !== null ? JSON.parse(val) : null;
-    } catch {
-      return null;
-    }
-  });
-  const [query, setQuery] = useState(() => {
-    try {
-      const val = localStorage.getItem('asana_filter_query');
-      return val !== null ? val : '';
-    } catch {
-      return '';
-    }
-  });
-  const [sortBy, setSortBy] = useState(() => {
-    try {
-      const val = localStorage.getItem('asana_filter_sortBy');
-      return val !== null ? val : 'created';
-    } catch {
-      return 'created';
-    }
-  });
-  const [sortOrder, setSortOrder] = useState(() => {
-    try {
-      const val = localStorage.getItem('asana_filter_sortOrder');
-      return val !== null ? val : 'desc';
-    } catch {
-      return 'desc';
-    }
+  const [selectedProjects, setSelectedProjects] = usePersistentState('asana_filter_projects', null);
+  const [selectedPeople, setSelectedPeople] = usePersistentState('asana_filter_people', null);
+  const [selectedCustomStatuses, setSelectedCustomStatuses] = usePersistentState(
+    'asana_filter_custom_statuses',
+    null,
+  );
+  const [query, setQuery] = usePersistentState('asana_filter_query', '', { raw: true });
+  const [sortBy, setSortBy] = usePersistentState('asana_filter_sortBy', 'created', { raw: true });
+  const [sortOrder, setSortOrder] = usePersistentState('asana_filter_sortOrder', 'desc', {
+    raw: true,
   });
   const [newTitle, setNewTitle] = useState('');
   const [newProject, setNewProject] = useState('');
@@ -144,93 +100,7 @@ export default function App() {
     }
   };
 
-  const [filtersOpen, setFiltersOpen] = useState(() => {
-    try {
-      const val = localStorage.getItem('asana_filters_open');
-      return val !== null ? JSON.parse(val) : false;
-    } catch {
-      return false;
-    }
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('asana_filter_status', status);
-    } catch (e) {
-      console.error('Error saving status filter:', e);
-    }
-  }, [status]);
-
-  useEffect(() => {
-    try {
-      if (selectedProjects === null) {
-        localStorage.removeItem('asana_filter_projects');
-      } else {
-        localStorage.setItem('asana_filter_projects', JSON.stringify(selectedProjects));
-      }
-    } catch (e) {
-      console.error('Error saving projects filter:', e);
-    }
-  }, [selectedProjects]);
-
-  useEffect(() => {
-    try {
-      if (selectedPeople === null) {
-        localStorage.removeItem('asana_filter_people');
-      } else {
-        localStorage.setItem('asana_filter_people', JSON.stringify(selectedPeople));
-      }
-    } catch (e) {
-      console.error('Error saving people filter:', e);
-    }
-  }, [selectedPeople]);
-
-  useEffect(() => {
-    try {
-      if (selectedCustomStatuses === null) {
-        localStorage.removeItem('asana_filter_custom_statuses');
-      } else {
-        localStorage.setItem(
-          'asana_filter_custom_statuses',
-          JSON.stringify(selectedCustomStatuses),
-        );
-      }
-    } catch (e) {
-      console.error('Error saving custom statuses filter:', e);
-    }
-  }, [selectedCustomStatuses]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('asana_filter_query', query);
-    } catch (e) {
-      console.error('Error saving query filter:', e);
-    }
-  }, [query]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('asana_filter_sortBy', sortBy);
-    } catch (e) {
-      console.error('Error saving sortBy:', e);
-    }
-  }, [sortBy]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('asana_filter_sortOrder', sortOrder);
-    } catch (e) {
-      console.error('Error saving sortOrder:', e);
-    }
-  }, [sortOrder]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('asana_filters_open', JSON.stringify(filtersOpen));
-    } catch (e) {
-      console.error('Error saving filtersOpen state:', e);
-    }
-  }, [filtersOpen]);
+  const [filtersOpen, setFiltersOpen] = usePersistentState('asana_filters_open', false);
 
   const isMobile = useIsMobile();
 
@@ -285,27 +155,15 @@ export default function App() {
   }, [tasks]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const out = tasks.filter((t) => {
-      if (q && !t.name.toLowerCase().includes(q)) return false;
-      if (status === 'Incomplete' && t.completed) return false;
-      if (status === 'Complete' && !t.completed) return false;
-      if (selectedProjects !== null) {
-        const names = t.projects?.map((p) => p.name) ?? [];
-        if (!names.some((n) => selectedProjects.includes(n))) return false;
-      }
-      if (selectedPeople !== null) {
-        const assigneeName = t.assignee ? t.assignee.name : 'Unassigned';
-        if (!selectedPeople.includes(assigneeName)) return false;
-      }
-      if (selectedCustomStatuses !== null) {
-        const taskStatus =
-          t.custom_fields?.find((f) => f.name?.toLowerCase() === 'status')?.enum_value?.name ??
-          'None';
-        if (!selectedCustomStatuses.includes(taskStatus)) return false;
-      }
-      return true;
-    });
+    const out = tasks.filter((t) =>
+      taskMatchesFilters(t, {
+        query,
+        status,
+        selectedProjects,
+        selectedPeople,
+        selectedCustomStatuses,
+      }),
+    );
     const near = '0000-00-00';
     const multiplier = sortOrder === 'desc' ? -1 : 1;
     out.sort((a, b) => {
@@ -355,6 +213,22 @@ export default function App() {
     setTasks((ts) => ts.map((t) => (t.gid === gid ? { ...t, ...patch } : t)));
   }
 
+  // Apply `patch` optimistically, call the API, and roll the patched fields
+  // back to their prior values (surfacing `errorMsg`) if the write fails.
+  async function optimisticUpdate(gid, patch, apiCall, errorMsg) {
+    const prev = tasks.find((t) => t.gid === gid);
+    if (!prev) return;
+    const rollback = {};
+    for (const key of Object.keys(patch)) rollback[key] = prev[key];
+    updateTaskLocal(gid, patch);
+    try {
+      await apiCall();
+    } catch {
+      updateTaskLocal(gid, rollback);
+      setWriteError(errorMsg);
+    }
+  }
+
   function toggleProject(name) {
     setSelectedProjects((prev) => {
       if (prev === null) return projects.map((p) => p.name).filter((n) => n !== name);
@@ -373,7 +247,7 @@ export default function App() {
   function toggleCustomStatus(name) {
     setSelectedCustomStatuses((prev) => {
       if (prev === null) {
-        return [...Object.keys(STATUS_OPTION_STYLES), 'None'].filter((n) => n !== name);
+        return [...Object.keys(STATUS_OPTION_STYLES), NO_STATUS].filter((n) => n !== name);
       }
       return prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name];
     });
@@ -413,59 +287,49 @@ export default function App() {
   };
 
   async function handleToggle(gid, completed) {
-    const prev = tasks.find((t) => t.gid === gid)?.completed;
-    updateTaskLocal(gid, { completed });
-    try {
-      await setTaskCompleted(gid, completed);
-    } catch {
-      updateTaskLocal(gid, { completed: prev });
-      setWriteError("Couldn't update the task in Asana.");
-    }
+    await optimisticUpdate(
+      gid,
+      { completed },
+      () => setTaskCompleted(gid, completed),
+      "Couldn't update the task in Asana.",
+    );
   }
 
   async function handleNameChange(gid, name) {
-    const prev = tasks.find((t) => t.gid === gid)?.name;
-    updateTaskLocal(gid, { name });
-    try {
-      await setTaskName(gid, name);
-    } catch {
-      updateTaskLocal(gid, { name: prev });
-      setWriteError("Couldn't save the task name in Asana.");
-    }
+    await optimisticUpdate(
+      gid,
+      { name },
+      () => setTaskName(gid, name),
+      "Couldn't save the task name in Asana.",
+    );
   }
 
   async function handleNotesChange(gid, notes) {
-    const prev = tasks.find((t) => t.gid === gid)?.notes;
-    updateTaskLocal(gid, { notes });
-    try {
-      await setTaskNotes(gid, notes);
-    } catch {
-      updateTaskLocal(gid, { notes: prev });
-      setWriteError("Couldn't save the description in Asana.");
-    }
+    await optimisticUpdate(
+      gid,
+      { notes },
+      () => setTaskNotes(gid, notes),
+      "Couldn't save the description in Asana.",
+    );
   }
 
   async function handleDueChange(gid, dueOn) {
-    const prev = tasks.find((t) => t.gid === gid)?.due_on;
-    updateTaskLocal(gid, { due_on: dueOn });
-    try {
-      await setTaskDueDate(gid, dueOn);
-    } catch {
-      updateTaskLocal(gid, { due_on: prev });
-      setWriteError("Couldn't save the due date in Asana.");
-    }
+    await optimisticUpdate(
+      gid,
+      { due_on: dueOn },
+      () => setTaskDueDate(gid, dueOn),
+      "Couldn't save the due date in Asana.",
+    );
   }
 
   async function handleAssigneeChange(gid, assigneeGid) {
-    const prev = tasks.find((t) => t.gid === gid)?.assignee;
     const newAssignee = assigneeGid ? people.find((p) => p.gid === assigneeGid) : null;
-    updateTaskLocal(gid, { assignee: newAssignee });
-    try {
-      await setTaskAssignee(gid, assigneeGid);
-    } catch {
-      updateTaskLocal(gid, { assignee: prev });
-      setWriteError("Couldn't save the assignee in Asana.");
-    }
+    await optimisticUpdate(
+      gid,
+      { assignee: newAssignee },
+      () => setTaskAssignee(gid, assigneeGid),
+      "Couldn't save the assignee in Asana.",
+    );
   }
 
   async function handleCustomFieldChange(taskGid, customFieldGid, enumOptionGid) {
@@ -627,41 +491,16 @@ export default function App() {
       };
       setTasks((ts) => [taskObject, ...ts]);
 
-      // Check if the newly created task is visible with the current filters
-      const q = query.trim().toLowerCase();
-      const matchesQuery = !q || taskObject.name.toLowerCase().includes(q);
+      // Warn if the newly created task is hidden by the current filters.
+      const isHidden = !taskMatchesFilters(taskObject, {
+        query,
+        status,
+        selectedProjects,
+        selectedPeople,
+        selectedCustomStatuses,
+      });
 
-      let matchesStatus = true;
-      if (status === 'Incomplete' && taskObject.completed) matchesStatus = false;
-      if (status === 'Complete' && !taskObject.completed) matchesStatus = false;
-
-      let matchesProjects = true;
-      if (selectedProjects !== null) {
-        const names = taskObject.projects?.map((p) => p.name) ?? [];
-        matchesProjects = names.some((n) => selectedProjects.includes(n));
-      }
-
-      let matchesPeople = true;
-      if (selectedPeople !== null) {
-        const assigneeName = taskObject.assignee ? taskObject.assignee.name : 'Unassigned';
-        matchesPeople = selectedPeople.includes(assigneeName);
-      }
-
-      let matchesCustomStatuses = true;
-      if (selectedCustomStatuses !== null) {
-        const taskStatus =
-          taskObject.custom_fields?.find((f) => f.name?.toLowerCase() === 'status')?.enum_value
-            ?.name ?? 'None';
-        matchesCustomStatuses = selectedCustomStatuses.includes(taskStatus);
-      }
-
-      if (
-        !matchesQuery ||
-        !matchesStatus ||
-        !matchesProjects ||
-        !matchesPeople ||
-        !matchesCustomStatuses
-      ) {
+      if (isHidden) {
         setWriteError({
           type: 'warning',
           message: (
@@ -744,12 +583,10 @@ export default function App() {
             }}
             className="appearance-none border-[1.5px] border-border bg-panel rounded-full pl-3.5 pr-7 py-2 font-semibold text-[13px] text-ink cursor-pointer"
           >
-            <option value="created">Newest</option>
+            <option value="created">{sortOrder === 'asc' ? 'Oldest' : 'Newest'}</option>
             <option value="due">Due date</option>
             <option value="status">Status</option>
-            <option value="project">Project</option>
-            <option value="name">Name</option>
-            <option value="assignee">Who</option>
+            <option value="name">{sortOrder === 'asc' ? 'A-Z' : 'Z-A'}</option>
           </select>
         </div>
       </div>
@@ -774,7 +611,7 @@ export default function App() {
       />
       <MultiFilterGroup
         label="Status"
-        options={[...Object.keys(STATUS_OPTION_STYLES), 'None']}
+        options={[...Object.keys(STATUS_OPTION_STYLES), NO_STATUS]}
         selected={selectedCustomStatuses}
         onToggle={toggleCustomStatus}
         onSelectAll={() => setSelectedCustomStatuses(null)}
@@ -854,12 +691,6 @@ export default function App() {
                   {activeFilterCount}
                 </span>
               )}
-              <span
-                className="text-[13px] leading-none transition-transform"
-                style={{ transform: filtersOpen ? 'rotate(180deg)' : 'none' }}
-              >
-                ⌄
-              </span>
             </button>
 
             <div className="relative">
@@ -876,8 +707,7 @@ export default function App() {
                 >
                   <path d="M7 20V4M3 8l4-4 4 4M17 4v16m-4-4 4 4 4-4" />
                 </svg>
-                <span>Sort: {getSortLabel(sortBy)}</span>
-                <span className="text-[13px] leading-none">⌄</span>
+                <span>Sort: {getSortLabel(sortBy, sortOrder)}</span>
               </div>
               <select
                 value={sortBy}
@@ -888,14 +718,49 @@ export default function App() {
                 }}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer font-sans"
               >
-                <option value="created">Newest</option>
+                <option value="created">{sortOrder === 'asc' ? 'Oldest' : 'Newest'}</option>
                 <option value="due">Due date</option>
                 <option value="status">Status</option>
-                <option value="project">Project</option>
-                <option value="name">Name</option>
-                <option value="assignee">Who</option>
+                <option value="name">{sortOrder === 'asc' ? 'A-Z' : 'Z-A'}</option>
               </select>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+              className="flex items-center justify-center rounded-full w-8 h-8 font-semibold border-[1.5px] bg-panel border-border text-ink-soft hover:bg-panel-alt transition-colors cursor-pointer"
+              aria-label={`Toggle sort order to ${sortOrder === 'asc' ? 'descending' : 'ascending'}`}
+            >
+              {sortOrder === 'asc' ? (
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="12" y1="19" x2="12" y2="5" />
+                  <polyline points="5 12 12 5 19 12" />
+                </svg>
+              ) : (
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <polyline points="19 12 12 19 5 12" />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
 
@@ -944,7 +809,7 @@ export default function App() {
                   setNewDueDate(defaultDueDate());
                   setShowAddForm(true);
                 }}
-                className={`flex items-center gap-${isMobile ? '[15px] my-3 px-3.5 py-3 bg-panel border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)]' : '5 pt-3.5 pb-4 border-b border-border-soft mb-2'} w-full text-left cursor-pointer hover:opacity-80`}
+                className={`flex items-center ${isMobile ? 'gap-2 my-3 px-3.5 py-3 bg-panel border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)]' : 'gap-5 pt-3.5 pb-4 border-b border-border-soft mb-2'} w-full text-left cursor-pointer hover:opacity-80`}
               >
                 <span
                   className={

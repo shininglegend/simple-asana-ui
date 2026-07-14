@@ -27,7 +27,7 @@ export default function MultiFilterGroup({
           All
         </button>
         <button type="button" className={pillClasses(isNone)} onClick={onSelectNone}>
-          None
+          Clear
         </button>
         {options.map((opt) => {
           const name = typeof opt === 'object' ? opt.name : opt;
