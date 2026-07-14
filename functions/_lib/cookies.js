@@ -34,7 +34,7 @@ export function serializeCookie(name, value, opts = {}) {
 }
 
 export function clearCookie(name) {
-  return serializeCookie(name, '', { maxAge: 0 });
+  return serializeCookie(name, '', { maxAge: 0, expires: new Date(0) });
 }
 
 export async function refreshAccessToken(env, refreshToken) {

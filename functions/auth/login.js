@@ -14,6 +14,9 @@ export async function onRequestGet({ env }) {
   // Asana developer console. Set ASANA_OAUTH_SCOPE (space-delimited) to use
   // granular scopes instead — they must also be registered on the app first.
   authorize.searchParams.set('scope', env.ASANA_OAUTH_SCOPE || 'default');
+  // Force Asana to show the authorization prompt so that users who just logged out
+  // aren't silently and instantly logged back in with their active Asana.com session.
+  authorize.searchParams.set('display_ui', 'always');
 
   return new Response(null, {
     status: 302,
