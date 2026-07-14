@@ -80,7 +80,30 @@ export default function App() {
     }
   });
   const [newTitle, setNewTitle] = useState('');
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('task') || null;
+    } catch {
+      return null;
+    }
+  });
+
+  const handleSelectId = (id) => {
+    setSelectedId(id);
+    try {
+      const url = new URL(window.location.href);
+      if (id) {
+        url.searchParams.set('task', id);
+      } else {
+        url.searchParams.delete('task');
+      }
+      window.history.replaceState({}, '', url.toString());
+    } catch (e) {
+      console.error('Error updating URL search params:', e);
+    }
+  };
+
   const [filtersOpen, setFiltersOpen] = useState(() => {
     try {
       const val = localStorage.getItem('asana_filters_open');
@@ -164,7 +187,7 @@ export default function App() {
         if (!wsGid) throw new Error('No workspace found for this user.');
         setWorkspaceGid(wsGid);
         const [projectList, userList] = await Promise.all([
-          getProjects(wsGid),
+          getProjects(wsGid, me.gid),
           getWorkspaceUsers(wsGid),
         ]);
         setProjects(projectList);
@@ -214,7 +237,7 @@ export default function App() {
       }
       return true;
     });
-    const far = '9999-99-99';
+    const near = '0000-00-00';
     const multiplier = sortOrder === 'desc' ? -1 : 1;
     out.sort((a, b) => {
       let comparison = 0;
@@ -225,14 +248,14 @@ export default function App() {
       } else if (sortBy === 'project') {
         comparison = (a.projects?.[0]?.name ?? '').localeCompare(b.projects?.[0]?.name ?? '');
         if (comparison === 0) {
-          comparison = (a.due_on ?? far).localeCompare(b.due_on ?? far);
+          comparison = (a.due_on ?? near).localeCompare(b.due_on ?? near);
         }
       } else if (sortBy === 'assignee') {
         comparison = (a.assignee?.name ?? '').localeCompare(b.assignee?.name ?? '');
       } else if (sortBy === 'due') {
-        comparison = (a.due_on ?? far).localeCompare(b.due_on ?? far);
+        comparison = (a.due_on ?? near).localeCompare(b.due_on ?? near);
       } else {
-        comparison = (a.due_on ?? far).localeCompare(b.due_on ?? far);
+        comparison = (a.due_on ?? near).localeCompare(b.due_on ?? near);
       }
       return comparison * multiplier;
     });
@@ -625,7 +648,7 @@ export default function App() {
                   task={t}
                   projectColors={projectColors}
                   onToggle={handleToggle}
-                  onOpen={setSelectedId}
+                  onOpen={handleSelectId}
                   isMobile={isMobile}
                 />
               </div>
@@ -682,7 +705,7 @@ export default function App() {
           projects={projects}
           onAddProject={handleAddProject}
           onRemoveProject={handleRemoveProject}
-          onClose={() => setSelectedId(null)}
+          onClose={() => handleSelectId(null)}
           onToggle={handleToggle}
           onNotesChange={handleNotesChange}
           onDueChange={handleDueChange}
