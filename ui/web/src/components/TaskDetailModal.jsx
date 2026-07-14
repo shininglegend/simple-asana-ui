@@ -134,223 +134,229 @@ export default function TaskDetailModal({
   }
 
   const metaFields = (
-    <div className="flex flex-wrap gap-x-5.5 gap-y-4">
-      <div className="flex flex-col gap-1">
-        <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">Due</span>
-        <div className="flex items-center gap-1.5">
-          <div className="relative cursor-pointer group">
-            <span
-              className={`font-semibold text-sm ${
-                overdue ? 'text-danger' : 'text-ink'
-              } underline decoration-dashed decoration-1 underline-offset-4 group-hover:text-accent group-hover:decoration-accent transition-colors`}
-            >
-              {formatDateLong(dueDate)}
-            </span>
-            <input
-              type="date"
-              value={dueDate || ''}
-              onChange={(e) => {
-                const val = e.target.value || null;
-                setDueDate(val);
-                if (val !== task.due_on) {
-                  onDueChange(task.gid, val);
-                }
-              }}
-              onClick={(e) => {
-                if (typeof e.target.showPicker === 'function') {
-                  try {
-                    e.target.showPicker();
-                  } catch (err) {
-                    console.warn('showPicker failed:', err);
-                  }
-                }
-              }}
-              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-            />
-          </div>
-          {dueDate && (
-            <button
-              type="button"
-              onClick={() => {
-                setDueDate(null);
-                onDueChange(task.gid, null);
-              }}
-              aria-label="Clear due date"
-              className="border-0 bg-transparent text-fainter hover:text-danger cursor-pointer p-0.5 text-xs font-bold leading-none select-none transition-colors"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-      </div>
-      <div className="flex flex-col gap-1">
-        <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
-          Created
-        </span>
-        <span className="font-semibold text-sm text-ink">
-          {formatDateLong(task.created_at ? task.created_at.split('T')[0] : null)}
-        </span>
-      </div>
-      <div className="flex flex-col gap-1 min-w-[140px]">
-        <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
-          Projects
-        </span>
-        <div className="flex flex-wrap gap-1.5 items-center">
-          {task.projects && task.projects.length > 0
-            ? task.projects.map((p) => {
-                const color = projectColors.get(p.gid) ?? '#b8b2a8';
-                return (
-                  <span
-                    key={p.gid}
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-panel-alt border border-border text-ink"
-                    style={{ borderLeftColor: color, borderLeftWidth: 3 }}
-                  >
-                    <span className="truncate max-w-[100px]">{p.name}</span>
-                    {task.projects.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => onRemoveProject(task.gid, p.gid)}
-                        className="border-0 bg-transparent text-fainter hover:text-danger cursor-pointer p-0 text-[10px] font-bold leading-none select-none transition-colors"
-                        title={`Remove from project ${p.name}`}
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </span>
-                );
-              })
-            : null}
-
-          {availableProjects.length > 0 && (
-            <div className="relative flex items-center">
-              <select
-                value=""
+    <div className="flex flex-col gap-y-4">
+      <div className="flex flex-wrap gap-x-5.5 gap-y-4">
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
+            Due
+          </span>
+          <div className="flex items-center gap-1.5">
+            <div className="relative cursor-pointer group">
+              <span
+                className={`font-semibold text-sm ${
+                  overdue ? 'text-danger' : 'text-ink'
+                } underline decoration-dashed decoration-1 underline-offset-4 group-hover:text-accent group-hover:decoration-accent transition-colors`}
+              >
+                {formatDateLong(dueDate)}
+              </span>
+              <input
+                type="date"
+                value={dueDate || ''}
                 onChange={(e) => {
-                  const val = e.target.value;
-                  if (val) {
-                    onAddProject(task.gid, val);
+                  const val = e.target.value || null;
+                  setDueDate(val);
+                  if (val !== task.due_on) {
+                    onDueChange(task.gid, val);
                   }
                 }}
-                className="font-semibold text-[11px] text-accent bg-transparent border border-dashed border-accent hover:bg-[#faf8f4] rounded-full px-2 py-0.5 outline-none cursor-pointer appearance-none"
-              >
-                <option value="">+ Add Project</option>
-                {availableProjects.map((p) => (
-                  <option key={p.gid} value={p.gid} className="text-ink font-normal">
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+                onClick={(e) => {
+                  if (typeof e.target.showPicker === 'function') {
+                    try {
+                      e.target.showPicker();
+                    } catch (err) {
+                      console.warn('showPicker failed:', err);
+                    }
+                  }
+                }}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              />
             </div>
-          )}
+            {dueDate && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDueDate(null);
+                  onDueChange(task.gid, null);
+                }}
+                aria-label="Clear due date"
+                className="border-0 bg-transparent text-fainter hover:text-danger cursor-pointer p-0.5 text-xs font-bold leading-none select-none transition-colors"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
+            Created
+          </span>
+          <span className="font-semibold text-sm text-ink">
+            {formatDateLong(task.created_at ? task.created_at.split('T')[0] : null)}
+          </span>
+        </div>
+        <div className="flex flex-col gap-1 min-w-[140px]">
+          <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
+            Projects
+          </span>
+          <div className="flex flex-wrap gap-1.5 items-center">
+            {task.projects && task.projects.length > 0
+              ? task.projects.map((p) => {
+                  const color = projectColors.get(p.gid) ?? '#b8b2a8';
+                  return (
+                    <span
+                      key={p.gid}
+                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-panel-alt border border-border text-ink"
+                      style={{ borderLeftColor: color, borderLeftWidth: 3 }}
+                    >
+                      <span className="truncate max-w-[100px]">{p.name}</span>
+                      {task.projects.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => onRemoveProject(task.gid, p.gid)}
+                          className="border-0 bg-transparent text-fainter hover:text-danger cursor-pointer p-0 text-[10px] font-bold leading-none select-none transition-colors"
+                          title={`Remove from project ${p.name}`}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </span>
+                  );
+                })
+              : null}
+
+            {availableProjects.length > 0 && (
+              <div className="relative flex items-center">
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val) {
+                      onAddProject(task.gid, val);
+                    }
+                  }}
+                  className="font-semibold text-[11px] text-accent bg-transparent border border-dashed border-accent hover:bg-[#faf8f4] rounded-full px-2 py-0.5 outline-none cursor-pointer appearance-none"
+                >
+                  <option value="">+ Add Project</option>
+                  {availableProjects.map((p) => (
+                    <option key={p.gid} value={p.gid} className="text-ink font-normal">
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-      <div className="flex flex-col gap-1 relative">
-        <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
-          Status
-        </span>
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-            className={`flex items-center gap-1.5 cursor-pointer transition-colors outline-none select-none h-[24px] rounded px-2.5 py-0.5 font-semibold text-[11px] ${
-              currentStatus
-                ? 'border'
-                : 'border border-dashed border-accent text-accent hover:bg-[#faf8f4] bg-transparent'
-            }`}
-            style={
-              currentStatus
-                ? {
-                    backgroundColor: getStatusStyle(currentStatus.name, currentStatus.color).bg,
-                    color: getStatusStyle(currentStatus.name, currentStatus.color).text,
-                    borderColor: getStatusStyle(currentStatus.name, currentStatus.color).border,
-                  }
-                : {}
-            }
-          >
-            <span>{currentStatus ? currentStatus.name : 'Select status'}</span>
-            <span
-              className="text-[8px]"
-              style={{ color: currentStatus ? 'currentColor' : 'var(--color-fainter)' }}
+      <div className="flex flex-wrap gap-x-5.5 gap-y-4">
+        <div className="flex flex-col gap-1 relative">
+          <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
+            Status
+          </span>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              className={`flex items-center gap-1.5 cursor-pointer transition-colors outline-none select-none h-[24px] rounded px-2.5 py-0.5 font-semibold text-[11px] ${
+                currentStatus
+                  ? 'border'
+                  : 'border border-dashed border-accent text-accent hover:bg-[#faf8f4] bg-transparent'
+              }`}
+              style={
+                currentStatus
+                  ? {
+                      backgroundColor: getStatusStyle(currentStatus.name, currentStatus.color).bg,
+                      color: getStatusStyle(currentStatus.name, currentStatus.color).text,
+                      borderColor: getStatusStyle(currentStatus.name, currentStatus.color).border,
+                    }
+                  : {}
+              }
             >
-              ▼
-            </span>
-          </button>
+              <span>{currentStatus ? currentStatus.name : 'Select status'}</span>
+              <span
+                className="text-[8px]"
+                style={{ color: currentStatus ? 'currentColor' : 'var(--color-fainter)' }}
+              >
+                ▼
+              </span>
+            </button>
 
-          {dropdownOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
-              <div className="absolute left-0 mt-1.5 z-20 w-[240px] bg-[#252525] border border-[#383838] rounded-xl shadow-lg shadow-black/40 py-1.5 overflow-hidden flex flex-col font-sans">
-                {statusField.enum_options?.map((opt) => {
-                  const style = getStatusStyle(opt.name, opt.color);
-                  return (
+            {dropdownOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
+                <div className="absolute left-0 mt-1.5 z-20 w-[240px] bg-[#252525] border border-[#383838] rounded-xl shadow-lg shadow-black/40 py-1.5 overflow-hidden flex flex-col font-sans">
+                  {statusField.enum_options?.map((opt) => {
+                    const style = getStatusStyle(opt.name, opt.color);
+                    return (
+                      <button
+                        key={opt.gid}
+                        type="button"
+                        onClick={() => {
+                          onCustomFieldChange(task.gid, statusField.gid, opt.gid);
+                          setDropdownOpen(false);
+                        }}
+                        className="relative w-full flex items-center gap-2 px-3 py-1.5 text-left border-0 bg-transparent text-white hover:bg-white/5 cursor-pointer transition-colors group"
+                      >
+                        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="w-4 flex items-center justify-center text-[10px] font-bold text-white/80 select-none">
+                          {currentStatus?.gid === opt.gid ? '✓' : ''}
+                        </div>
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border"
+                          style={{
+                            backgroundColor: style.bg,
+                            color: style.text,
+                            borderColor: style.border,
+                          }}
+                        >
+                          {opt.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {currentStatus && (
                     <button
-                      key={opt.gid}
                       type="button"
                       onClick={() => {
-                        onCustomFieldChange(task.gid, statusField.gid, opt.gid);
+                        onCustomFieldChange(task.gid, statusField.gid, null);
                         setDropdownOpen(false);
                       }}
-                      className="relative w-full flex items-center gap-2 px-3 py-1.5 text-left border-0 bg-transparent text-white hover:bg-white/5 cursor-pointer transition-colors group"
+                      className="w-full flex items-center justify-center py-2 mt-1 text-xs text-white/60 hover:text-white border-t border-[#383838] bg-transparent cursor-pointer transition-colors"
                     >
-                      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="w-4 flex items-center justify-center text-[10px] font-bold text-white/80 select-none">
-                        {currentStatus?.gid === opt.gid ? '✓' : ''}
-                      </div>
-                      <span
-                        className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border"
-                        style={{
-                          backgroundColor: style.bg,
-                          color: style.text,
-                          borderColor: style.border,
-                        }}
-                      >
-                        {opt.name}
-                      </span>
+                      Clear status
                     </button>
-                  );
-                })}
-                {currentStatus && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onCustomFieldChange(task.gid, statusField.gid, null);
-                      setDropdownOpen(false);
-                    }}
-                    className="w-full flex items-center justify-center py-2 mt-1 text-xs text-white/60 hover:text-white border-t border-[#383838] bg-transparent cursor-pointer transition-colors"
-                  >
-                    Clear status
-                  </button>
-                )}
-              </div>
-            </>
-          )}
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
-      </div>
-      <div className="flex flex-col gap-1">
-        <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
-          Assignee
-        </span>
-        <div className="relative flex items-center">
-          <select
-            value={task.assignee?.gid ?? ''}
-            onChange={(e) => {
-              const val = e.target.value || null;
-              onAssigneeChange(task.gid, val);
-            }}
-            className={`font-semibold text-[13px] border-0 bg-transparent outline-none p-0 cursor-pointer pr-4 appearance-none ${
-              task.assignee?.gid ? 'text-ink' : 'text-danger italic'
-            }`}
-          >
-            <option value="" className="text-danger italic">
-              Unassigned
-            </option>
-            {people.map((p) => (
-              <option key={p.gid} value={p.gid} className="text-ink font-normal non-italic">
-                {p.name}
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
+            Assignee
+          </span>
+          <div className="relative flex items-center">
+            <select
+              value={task.assignee?.gid ?? ''}
+              onChange={(e) => {
+                const val = e.target.value || null;
+                onAssigneeChange(task.gid, val);
+              }}
+              className={`font-semibold text-[13px] border-0 bg-transparent outline-none p-0 cursor-pointer pr-4 appearance-none ${
+                task.assignee?.gid ? 'text-ink' : 'text-danger italic'
+              }`}
+            >
+              <option value="" className="text-danger italic">
+                Unassigned
               </option>
-            ))}
-          </select>
-          <span className="absolute right-0 pointer-events-none text-[8px] text-fainter">▼</span>
+              {people.map((p) => (
+                <option key={p.gid} value={p.gid} className="text-ink font-normal non-italic">
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <span className="absolute right-0 pointer-events-none text-[8px] text-fainter">▼</span>
+          </div>
         </div>
       </div>
     </div>

@@ -3,7 +3,7 @@ import FilterGroup from './components/FilterGroup.jsx';
 import MultiFilterGroup from './components/MultiFilterGroup.jsx';
 import TaskRow from './components/TaskRow.jsx';
 import TaskDetailModal from './components/TaskDetailModal.jsx';
-import { assignProjectColors, STATUS_OPTION_STYLES } from './lib/colors.js';
+import { assignProjectColors, STATUS_OPTION_STYLES, stripStatusPrefix } from './lib/colors.js';
 import { useIsMobile } from './lib/useIsMobile.js';
 import { usePersistentState } from './lib/usePersistentState.js';
 import { taskMatchesFilters, NO_STATUS } from './lib/filterTasks.js';
@@ -154,6 +154,15 @@ export default function App() {
     return null;
   }, [tasks]);
 
+  // Status filter chips: use the live Asana option names (which carry the
+  // sort-order prefixes) so the chips match tasks' enum_value.name exactly.
+  // Fall back to the styled names only when no status field is present.
+  const customStatusOptions = useMemo(() => {
+    const names =
+      globalStatusField?.enum_options?.map((o) => o.name) ?? Object.keys(STATUS_OPTION_STYLES);
+    return [...names, NO_STATUS];
+  }, [globalStatusField]);
+
   const filtered = useMemo(() => {
     const out = tasks.filter((t) =>
       taskMatchesFilters(t, {
@@ -247,7 +256,7 @@ export default function App() {
   function toggleCustomStatus(name) {
     setSelectedCustomStatuses((prev) => {
       if (prev === null) {
-        return [...Object.keys(STATUS_OPTION_STYLES), NO_STATUS].filter((n) => n !== name);
+        return customStatusOptions.filter((n) => n !== name);
       }
       return prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name];
     });
@@ -447,7 +456,7 @@ export default function App() {
     }
     // Build custom_fields to set status to UNKNOWN
     const unknownOption = globalStatusField?.enum_options?.find(
-      (opt) => opt.name === 'UNKNOWN - PLEASE CHANGE',
+      (opt) => stripStatusPrefix(opt.name) === 'UNKNOWN - PLEASE CHANGE',
     );
     const customFields =
       globalStatusField && unknownOption
@@ -570,25 +579,6 @@ export default function App() {
           variant="status"
           onSelect={setStatus}
         />
-        <div className="hidden md:flex items-center gap-2.5">
-          <span className="w-[58px] flex-none font-semibold text-[11px] tracking-wider uppercase text-faint">
-            Sort
-          </span>
-          <select
-            value={sortBy}
-            onChange={(e) => {
-              const newSortBy = e.target.value;
-              setSortBy(newSortBy);
-              setSortOrder(newSortBy === 'created' ? 'desc' : 'asc');
-            }}
-            className="appearance-none border-[1.5px] border-border bg-panel rounded-full pl-3.5 pr-7 py-2 font-semibold text-[13px] text-ink cursor-pointer"
-          >
-            <option value="created">{sortOrder === 'asc' ? 'Oldest' : 'Newest'}</option>
-            <option value="due">Due date</option>
-            <option value="status">Status</option>
-            <option value="name">{sortOrder === 'asc' ? 'A-Z' : 'Z-A'}</option>
-          </select>
-        </div>
       </div>
       <MultiFilterGroup
         label="Project"
@@ -611,7 +601,7 @@ export default function App() {
       />
       <MultiFilterGroup
         label="Status"
-        options={[...Object.keys(STATUS_OPTION_STYLES), NO_STATUS]}
+        options={customStatusOptions}
         selected={selectedCustomStatuses}
         onToggle={toggleCustomStatus}
         onSelectAll={() => setSelectedCustomStatuses(null)}
@@ -776,13 +766,18 @@ export default function App() {
         {/* Card C: Task List */}
         <div className="bg-white rounded-xl shadow-xs border border-border-soft overflow-hidden md:col-start-2 md:row-start-2 w-full">
           {/* Desktop Table Headers */}
-          <div className="hidden md:grid grid-cols-[22px_minmax(0,1fr)_70px_70px_100px_150px] items-center gap-x-4 px-6 pt-4 pb-3 border-b border-border-soft font-semibold text-[11px] tracking-wider uppercase text-fainter bg-slate-50/10">
-            <span />
-            {renderHeader('Task', 'name')}
-            {renderHeader('Created', 'created')}
-            {renderHeader('Due', 'due')}
+          <div className="hidden md:flex items-center gap-4 px-6 pt-4 pb-3 border-b border-border-soft font-semibold text-[11px] tracking-wider uppercase text-fainter bg-slate-50/10">
+            <span className="text-muted/60">Sort by:</span>
+            {renderHeader('Task Name', 'name')}
+            <span className="text-border-soft">•</span>
+            {renderHeader('Due Date', 'due')}
+            <span className="text-border-soft">•</span>
             {renderHeader('Status', 'status')}
-            {renderHeader('Who', 'assignee')}
+            <span className="text-border-soft">•</span>
+            {renderHeader(
+              sortBy === 'created' ? (sortOrder === 'desc' ? 'Newest' : 'Oldest') : 'Newest',
+              'created',
+            )}
           </div>
 
           <div className="flex-1 overflow-auto px-4 md:px-6 py-1.5">
@@ -809,31 +804,17 @@ export default function App() {
                   setNewDueDate(defaultDueDate());
                   setShowAddForm(true);
                 }}
-                className={`flex items-center ${isMobile ? 'gap-2 my-3 px-3.5 py-3 bg-panel border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)]' : 'gap-5 pt-3.5 pb-4 border-b border-border-soft mb-2'} w-full text-left cursor-pointer hover:opacity-80`}
+                className="flex items-center gap-3 my-3 px-3.5 py-3 bg-panel border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)] w-full text-left cursor-pointer hover:opacity-80"
               >
-                <span
-                  className={
-                    isMobile
-                      ? 'w-[26px] h-[26px] flex-none rounded-full bg-accent flex items-center justify-center text-white text-lg font-semibold leading-none'
-                      : 'w-[22px] h-[22px] flex-none rounded-lg border-2 border-dashed border-[#d7d0c5] flex items-center justify-center text-[#bcb5a9] text-base leading-none'
-                  }
-                >
+                <span className="w-[26px] h-[26px] flex-none rounded-full bg-accent flex items-center justify-center text-white text-lg font-semibold leading-none">
                   +
                 </span>
                 <span className="text-muted font-medium text-[15px]">Add a task…</span>
               </button>
             ) : (
-              <div
-                className={`${isMobile ? 'my-3 px-3.5 py-3 bg-panel border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)]' : 'pt-3.5 pb-4 border-b border-border-soft mb-2'}`}
-              >
-                <div className="flex items-center gap-4">
-                  <span
-                    className={
-                      isMobile
-                        ? 'w-[26px] h-[26px] flex-none rounded-full bg-accent flex items-center justify-center text-white text-lg font-semibold leading-none'
-                        : 'w-[22px] h-[22px] flex-none rounded-lg border-2 border-dashed border-[#d7d0c5] flex items-center justify-center text-[#bcb5a9] text-base leading-none'
-                    }
-                  >
+              <div className="my-3 px-3.5 py-3 bg-panel border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)]">
+                <div className="flex items-center gap-3">
+                  <span className="w-[26px] h-[26px] flex-none rounded-full bg-accent flex items-center justify-center text-white text-lg font-semibold leading-none">
                     +
                   </span>
                   <input

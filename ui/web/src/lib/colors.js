@@ -39,9 +39,19 @@ export const ASANA_COLOR_MAP = {
   purple: { bg: '#f3e8ff', text: '#6b21a8', border: '#e9d5ff' },
 };
 
+// Status option names may carry a leading sort-order prefix like "3 " that
+// isn't part of the status's identity (it exists only to control sort order).
+// Strip it before any lookup so renumbering statuses never breaks styling.
+const STATUS_PREFIX = /^\d+\s+/;
+
+export function stripStatusPrefix(name) {
+  return name ? name.replace(STATUS_PREFIX, '') : name;
+}
+
 export function getStatusStyle(optionName, optionColor) {
-  if (STATUS_OPTION_STYLES[optionName]) {
-    return STATUS_OPTION_STYLES[optionName];
+  const key = stripStatusPrefix(optionName);
+  if (STATUS_OPTION_STYLES[key]) {
+    return STATUS_OPTION_STYLES[key];
   }
   const color = optionColor || 'cool-gray';
   const mapped = ASANA_COLOR_MAP[color];
