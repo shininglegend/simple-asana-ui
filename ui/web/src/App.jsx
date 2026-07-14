@@ -134,7 +134,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-app-bg flex items-center justify-center text-muted">
+      <div className="min-h-screen bg-white flex items-center justify-center text-muted">
         Loading your tasks…
       </div>
     );
@@ -142,7 +142,7 @@ export default function App() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-app-bg flex flex-col items-center justify-center gap-3 text-ink px-5 text-center">
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-3 text-ink px-5 text-center">
         <p>{error}</p>
         <a href="/auth/login" className="font-semibold">
           Try logging in again
@@ -182,8 +182,8 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen bg-app-bg md:py-10 md:px-5">
-      <div className="min-h-screen md:min-h-0 flex flex-col max-w-[700px] mx-auto bg-white md:border md:border-border md:rounded-2xl md:shadow-[0_4px_24px_rgba(60,50,35,0.06)] md:overflow-hidden">
+    <div className="min-h-screen bg-white">
+      <div className="min-h-screen flex flex-col max-w-[700px] mx-auto bg-white">
         <div className="sticky top-0 z-[5] bg-panel-alt border-b border-border px-4 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] md:px-6.5 md:py-5.5 flex flex-col gap-3.5">
           <div className="flex items-baseline justify-between gap-3">
             <h1 className="m-0 font-bold text-[17px] md:text-[22px] text-ink tracking-tight">
