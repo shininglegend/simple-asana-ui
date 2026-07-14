@@ -17,3 +17,6 @@ public/
 # OS / editor
 .DS_Store
 *.log
+
+# Claude Code worktrees (nested git repos, must never be tracked as gitlinks)
+.claude/worktrees/
