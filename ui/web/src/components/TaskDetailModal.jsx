@@ -9,13 +9,21 @@ export default function TaskDetailModal({
   onClose,
   onToggle,
   onNotesChange,
+  onDueChange,
+  onAssigneeChange,
+  people = [],
   isMobile,
 }) {
+  const [dueDate, setDueDate] = useState(task.due_on ?? null);
   const [notes, setNotes] = useState(task.notes ?? '');
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(true);
   const [commentError, setCommentError] = useState(null);
+
+  useEffect(() => {
+    setDueDate(task.due_on ?? null);
+  }, [task.gid, task.due_on]);
 
   useEffect(() => {
     setNotes(task.notes ?? '');
@@ -46,8 +54,7 @@ export default function TaskDetailModal({
   }, [task.gid]);
 
   const done = !!task.completed;
-  const overdue = isOverdue(task.due_on, done);
-  const assigneeName = task.assignee?.name;
+  const overdue = isOverdue(dueDate, done);
   const projectName = task.projects?.[0]?.name ?? '';
 
   async function submitComment(e) {
@@ -76,9 +83,42 @@ export default function TaskDetailModal({
     <div className="flex flex-wrap gap-x-5.5 gap-y-4">
       <div className="flex flex-col gap-1">
         <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">Due</span>
-        <span className={`font-semibold text-sm ${overdue ? 'text-danger' : 'text-ink'}`}>
-          {formatDateLong(task.due_on)}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <div className="relative cursor-pointer group">
+            <span
+              className={`font-semibold text-sm ${
+                overdue ? 'text-danger' : 'text-ink'
+              } underline decoration-dashed decoration-1 underline-offset-4 group-hover:text-accent group-hover:decoration-accent transition-colors`}
+            >
+              {formatDateLong(dueDate)}
+            </span>
+            <input
+              type="date"
+              value={dueDate || ''}
+              onChange={(e) => {
+                const val = e.target.value || null;
+                setDueDate(val);
+                if (val !== task.due_on) {
+                  onDueChange(task.gid, val);
+                }
+              }}
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+            />
+          </div>
+          {dueDate && (
+            <button
+              type="button"
+              onClick={() => {
+                setDueDate(null);
+                onDueChange(task.gid, null);
+              }}
+              aria-label="Clear due date"
+              className="border-0 bg-transparent text-fainter hover:text-danger cursor-pointer p-0.5 text-xs font-bold leading-none select-none transition-colors"
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
       <div className="flex flex-col gap-1">
         <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
@@ -104,11 +144,28 @@ export default function TaskDetailModal({
         <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
           Assignee
         </span>
-        <span
-          className={`font-semibold text-[13px] ${assigneeName ? 'text-ink' : 'text-fainter italic'}`}
-        >
-          {assigneeName ?? 'Unassigned'}
-        </span>
+        <div className="relative flex items-center">
+          <select
+            value={task.assignee?.gid ?? ''}
+            onChange={(e) => {
+              const val = e.target.value || null;
+              onAssigneeChange(task.gid, val);
+            }}
+            className={`font-semibold text-[13px] border-0 bg-transparent outline-none p-0 cursor-pointer pr-4 appearance-none ${
+              task.assignee?.gid ? 'text-ink' : 'text-danger italic'
+            }`}
+          >
+            <option value="" className="text-danger italic">
+              Unassigned
+            </option>
+            {people.map((p) => (
+              <option key={p.gid} value={p.gid} className="text-ink font-normal non-italic">
+                {p.name}
+              </option>
+            ))}
+          </select>
+          <span className="absolute right-0 pointer-events-none text-[8px] text-fainter">▼</span>
+        </div>
       </div>
     </div>
   );

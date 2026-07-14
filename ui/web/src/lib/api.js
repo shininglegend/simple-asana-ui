@@ -77,6 +77,20 @@ export function setTaskNotes(taskGid, notes) {
   });
 }
 
+export function setTaskDueDate(taskGid, dueOn) {
+  return apiFetch(`tasks/${taskGid}`, {
+    method: 'PUT',
+    body: JSON.stringify({ data: { due_on: dueOn } }),
+  });
+}
+
+export function setTaskAssignee(taskGid, assigneeGid) {
+  return apiFetch(`tasks/${taskGid}`, {
+    method: 'PUT',
+    body: JSON.stringify({ data: { assignee: assigneeGid } }),
+  });
+}
+
 export function createTask({ name, workspaceGid, projectGid, assigneeGid }) {
   return apiFetch('tasks', {
     method: 'POST',

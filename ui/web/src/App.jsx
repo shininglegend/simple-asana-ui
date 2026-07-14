@@ -12,6 +12,8 @@ import {
   getTasksForProjects,
   setTaskCompleted,
   setTaskNotes,
+  setTaskDueDate,
+  setTaskAssignee,
   createTask,
 } from './lib/api.js';
 
@@ -304,6 +306,29 @@ export default function App() {
     }
   }
 
+  async function handleDueChange(gid, dueOn) {
+    const prev = tasks.find((t) => t.gid === gid)?.due_on;
+    updateTaskLocal(gid, { due_on: dueOn });
+    try {
+      await setTaskDueDate(gid, dueOn);
+    } catch {
+      updateTaskLocal(gid, { due_on: prev });
+      setWriteError("Couldn't save the due date in Asana.");
+    }
+  }
+
+  async function handleAssigneeChange(gid, assigneeGid) {
+    const prev = tasks.find((t) => t.gid === gid)?.assignee;
+    const newAssignee = assigneeGid ? people.find((p) => p.gid === assigneeGid) : null;
+    updateTaskLocal(gid, { assignee: newAssignee });
+    try {
+      await setTaskAssignee(gid, assigneeGid);
+    } catch {
+      updateTaskLocal(gid, { assignee: prev });
+      setWriteError("Couldn't save the assignee in Asana.");
+    }
+  }
+
   async function handleAddTask() {
     const title = newTitle.trim();
     if (!title || !workspaceGid) return;
@@ -416,190 +441,188 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-panel">
-      
-        <div className="sticky top-0 z-[5] bg-panel-alt border-b border-border px-4 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] md:px-6 md:py-5.5 flex flex-col gap-3.5">
-          <div className="flex items-baseline justify-between gap-3">
-            <h1 className="m-0 font-bold text-[17px] md:text-[22px] text-ink tracking-tight">
-              Tasks
-            </h1>
-            <div className="flex items-center gap-4">
-              <span className="hidden md:inline font-semibold text-[13px] text-faint">
-                {countLabel}
-              </span>
-              <a
-                href="/auth/logout"
-                className="font-semibold text-[13px] text-muted hover:text-ink"
-              >
-                Log out
-              </a>
-            </div>
+      <div className="sticky top-0 z-[5] bg-panel-alt border-b border-border px-4 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] md:px-6 md:py-5.5 flex flex-col gap-3.5">
+        <div className="flex items-baseline justify-between gap-3">
+          <h1 className="m-0 font-bold text-[17px] md:text-[22px] text-ink tracking-tight">
+            Tasks
+          </h1>
+          <div className="flex items-center gap-4">
+            <span className="hidden md:inline font-semibold text-[13px] text-faint">
+              {countLabel}
+            </span>
+            <a href="/auth/logout" className="font-semibold text-[13px] text-muted hover:text-ink">
+              Log out
+            </a>
           </div>
+        </div>
 
-          <div className="flex items-center gap-2 bg-panel border-[1.5px] border-border rounded-[10px] px-3.5 py-2">
+        <div className="flex items-center gap-2 bg-panel border-[1.5px] border-border rounded-[10px] px-3.5 py-2">
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#a8a196"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <line x1="21" y1="21" x2="16.5" y2="16.5" />
+          </svg>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search tasks…"
+            className="flex-1 min-w-0 border-0 outline-none bg-transparent font-medium text-sm text-ink"
+          />
+        </div>
+
+        <div className="flex md:hidden items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((o) => !o)}
+            className={`md:hidden flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold text-[13px] border-[1.5px] transition-colors ${
+              filtersOpen || activeFilterCount
+                ? 'bg-highlight border-accent text-accent'
+                : 'bg-panel border-border text-ink-soft'
+            }`}
+          >
             <svg
-              width="15"
-              height="15"
+              width="14"
+              height="14"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#a8a196"
-              strokeWidth="2.4"
+              stroke="currentColor"
+              strokeWidth="2.2"
               strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              <circle cx="11" cy="11" r="7" />
-              <line x1="21" y1="21" x2="16.5" y2="16.5" />
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <line x1="7" y1="12" x2="17" y2="12" />
+              <line x1="10" y1="18" x2="14" y2="18" />
             </svg>
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search tasks…"
-              className="flex-1 min-w-0 border-0 outline-none bg-transparent font-medium text-sm text-ink"
-            />
-          </div>
-
-          <div className="flex md:hidden items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setFiltersOpen((o) => !o)}
-              className={`md:hidden flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold text-[13px] border-[1.5px] transition-colors ${
-                filtersOpen || activeFilterCount
-                  ? 'bg-highlight border-accent text-accent'
-                  : 'bg-panel border-border text-ink-soft'
-              }`}
+            <span>Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="min-w-4 h-4 px-1 box-border rounded-lg bg-accent text-white font-bold text-[10px] leading-4 text-center">
+                {activeFilterCount}
+              </span>
+            )}
+            <span
+              className="text-[13px] leading-none transition-transform"
+              style={{ transform: filtersOpen ? 'rotate(180deg)' : 'none' }}
             >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="4" y1="6" x2="20" y2="6" />
-                <line x1="7" y1="12" x2="17" y2="12" />
-                <line x1="10" y1="18" x2="14" y2="18" />
-              </svg>
-              <span>Filters</span>
-              {activeFilterCount > 0 && (
-                <span className="min-w-4 h-4 px-1 box-border rounded-lg bg-accent text-white font-bold text-[10px] leading-4 text-center">
-                  {activeFilterCount}
-                </span>
-              )}
-              <span
-                className="text-[13px] leading-none transition-transform"
-                style={{ transform: filtersOpen ? 'rotate(180deg)' : 'none' }}
-              >
-                ⌄
-              </span>
-            </button>
-            <div className="ml-auto flex items-center gap-2">
-              <span className="font-semibold text-[11px] tracking-wider uppercase text-fainter">
-                Sort
-              </span>
-              <select
-                value={sortBy}
-                onChange={(e) => {
-                  const newSortBy = e.target.value;
-                  setSortBy(newSortBy);
-                  setSortOrder(newSortBy === 'created' ? 'desc' : 'asc');
-                }}
-                className="appearance-none border-[1.5px] border-border bg-panel rounded-full pl-3.5 pr-7 py-2 font-semibold text-[13px] text-ink cursor-pointer"
-              >
-                <option value="created">Newest</option>
-                <option value="due">Due date</option>
-                <option value="project">Project</option>
-                <option value="name">Name</option>
-                <option value="assignee">Who</option>
-              </select>
-            </div>
+              ⌄
+            </span>
+          </button>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="font-semibold text-[11px] tracking-wider uppercase text-fainter">
+              Sort
+            </span>
+            <select
+              value={sortBy}
+              onChange={(e) => {
+                const newSortBy = e.target.value;
+                setSortBy(newSortBy);
+                setSortOrder(newSortBy === 'created' ? 'desc' : 'asc');
+              }}
+              className="appearance-none border-[1.5px] border-border bg-panel rounded-full pl-3.5 pr-7 py-2 font-semibold text-[13px] text-ink cursor-pointer"
+            >
+              <option value="created">Newest</option>
+              <option value="due">Due date</option>
+              <option value="project">Project</option>
+              <option value="name">Name</option>
+              <option value="assignee">Who</option>
+            </select>
           </div>
+        </div>
 
-          <div className={`${filtersOpen ? 'flex' : 'hidden'} md:flex flex-col gap-3.5`}>
-            {filterGroups}
-          </div>
+        <div className={`${filtersOpen ? 'flex' : 'hidden'} md:flex flex-col gap-3.5`}>
+          {filterGroups}
+        </div>
         <div className="md:max-w-6xl md:mx-auto bg-panel">
-
-        <div className="hidden md:grid grid-cols-[22px_minmax(0,1fr)_96px_96px_210px_150px] items-center gap-x-4 px-6 pt-2.5 pb-2 border-b border-border-soft font-semibold text-[11px] tracking-wider uppercase text-fainter">
-          <span />
-          {renderHeader('Task', 'name')}
-          {renderHeader('Created', 'created')}
-          {renderHeader('Due', 'due')}
-          {renderHeader('Project', 'project')}
-          {renderHeader('Who', 'assignee')}
-        </div>
-
-        <div className="flex-1 overflow-auto px-4 md:px-6 py-1.5">
-          <div className="md:hidden pt-2.5 pb-1 px-0.5 font-semibold text-[11px] tracking-wider uppercase text-fainter">
-            {countLabel}
+          <div className="hidden md:grid grid-cols-[22px_minmax(0,1fr)_96px_96px_210px_150px] items-center gap-x-4 px-6 pt-2.5 pb-2 border-b border-border-soft font-semibold text-[11px] tracking-wider uppercase text-fainter">
+            <span />
+            {renderHeader('Task', 'name')}
+            {renderHeader('Created', 'created')}
+            {renderHeader('Due', 'due')}
+            {renderHeader('Project', 'project')}
+            {renderHeader('Who', 'assignee')}
           </div>
-          {filtered.map((t) => (
-            <div key={t.gid} className="border-b border-border-soft">
-              <TaskRow
-                task={t}
-                projectColor={projectColors.get(t.projects?.[0]?.gid)}
-                onToggle={handleToggle}
-                onOpen={setSelectedId}
-                isMobile={isMobile}
-              />
-            </div>
-          ))}
-          {filtered.length === 0 && (
-            <div className="py-11 px-2.5 text-center text-fainter font-medium text-[15px] leading-snug">
-              Nothing here with these filters.
-            </div>
-          )}
 
-          {isMobile ? (
-            <div className="flex items-center gap-[11px] my-3 px-3.5 py-3 bg-panel border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)]">
-              <span className="w-[26px] h-[26px] flex-none rounded-full bg-accent flex items-center justify-center text-white text-lg font-semibold leading-none">
-                +
-              </span>
-              <input
-                type="text"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-                placeholder="Add a task…"
-                className="flex-1 min-w-0 border-0 outline-none bg-transparent font-semibold text-[15px] text-ink"
-              />
+          <div className="flex-1 overflow-auto px-4 md:px-6 py-1.5">
+            <div className="md:hidden pt-2.5 pb-1 px-0.5 font-semibold text-[11px] tracking-wider uppercase text-fainter">
+              {countLabel}
             </div>
-          ) : (
-            <div className="flex items-center gap-4 pt-3.5 pb-5">
-              <span className="w-[22px] h-[22px] flex-none rounded-lg border-2 border-dashed border-[#d7d0c5] flex items-center justify-center text-[#bcb5a9] text-base leading-none">
-                +
-              </span>
-              <input
-                type="text"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-                placeholder="Add a task…"
-                className="flex-1 border-0 outline-none bg-transparent font-medium text-[15px] text-ink"
-              />
-            </div>
-          )}
+            {filtered.map((t) => (
+              <div key={t.gid} className="border-b border-border-soft">
+                <TaskRow
+                  task={t}
+                  projectColor={projectColors.get(t.projects?.[0]?.gid)}
+                  onToggle={handleToggle}
+                  onOpen={setSelectedId}
+                  isMobile={isMobile}
+                />
+              </div>
+            ))}
+            {filtered.length === 0 && (
+              <div className="py-11 px-2.5 text-center text-fainter font-medium text-[15px] leading-snug">
+                Nothing here with these filters.
+              </div>
+            )}
+
+            {isMobile ? (
+              <div className="flex items-center gap-[11px] my-3 px-3.5 py-3 bg-panel border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)]">
+                <span className="w-[26px] h-[26px] flex-none rounded-full bg-accent flex items-center justify-center text-white text-lg font-semibold leading-none">
+                  +
+                </span>
+                <input
+                  type="text"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+                  placeholder="Add a task…"
+                  className="flex-1 min-w-0 border-0 outline-none bg-transparent font-semibold text-[15px] text-ink"
+                />
+              </div>
+            ) : (
+              <div className="flex items-center gap-4 pt-3.5 pb-5">
+                <span className="w-[22px] h-[22px] flex-none rounded-lg border-2 border-dashed border-[#d7d0c5] flex items-center justify-center text-[#bcb5a9] text-base leading-none">
+                  +
+                </span>
+                <input
+                  type="text"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+                  placeholder="Add a task…"
+                  className="flex-1 border-0 outline-none bg-transparent font-medium text-[15px] text-ink"
+                />
+              </div>
+            )}
+          </div>
         </div>
+
+        {writeError && (
+          <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+20px)] left-1/2 -translate-x-1/2 z-[60] max-w-[90vw] bg-ink text-white font-medium text-[13px] px-4 py-2.5 rounded-full shadow-[0_8px_24px_rgba(40,32,20,0.3)] whitespace-nowrap overflow-hidden text-ellipsis">
+            {writeError}
+          </div>
+        )}
+
+        {selected && (
+          <TaskDetailModal
+            task={selected}
+            projectColor={projectColors.get(selected.projects?.[0]?.gid)}
+            onClose={() => setSelectedId(null)}
+            onToggle={handleToggle}
+            onNotesChange={handleNotesChange}
+            onDueChange={handleDueChange}
+            onAssigneeChange={handleAssigneeChange}
+            people={people}
+            isMobile={isMobile}
+          />
+        )}
       </div>
-
-      {writeError && (
-        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+20px)] left-1/2 -translate-x-1/2 z-[60] max-w-[90vw] bg-ink text-white font-medium text-[13px] px-4 py-2.5 rounded-full shadow-[0_8px_24px_rgba(40,32,20,0.3)] whitespace-nowrap overflow-hidden text-ellipsis">
-          {writeError}
-        </div>
-      )}
-
-      {selected && (
-        <TaskDetailModal
-          task={selected}
-          projectColor={projectColors.get(selected.projects?.[0]?.gid)}
-          onClose={() => setSelectedId(null)}
-          onToggle={handleToggle}
-          onNotesChange={handleNotesChange}
-          isMobile={isMobile}
-        />
-      )}
     </div>
-</div>
   );
 }

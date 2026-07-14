@@ -61,7 +61,7 @@ export default function TaskRow({ task, projectColor, onToggle, onOpen, isMobile
             </span>
             <span
               className={`font-medium text-xs ${
-                assigneeName ? 'text-muted' : 'text-fainter italic'
+                assigneeName ? 'text-muted' : 'text-danger italic'
               }`}
             >
               {assigneeName ?? 'Unassigned'}
@@ -112,7 +112,7 @@ export default function TaskRow({ task, projectColor, onToggle, onOpen, isMobile
 
       <span
         className={`min-w-0 font-medium text-xs truncate ${
-          assigneeName ? 'text-muted' : 'text-fainter italic'
+          assigneeName ? 'text-muted' : 'text-danger italic'
         }`}
       >
         {assigneeName ?? 'Unassigned'}
