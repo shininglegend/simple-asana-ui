@@ -1,34 +1,18 @@
 @import 'tailwindcss';
 
-:root {
-  /* Primary palette — global custom properties */
-  --primary-bg: #F7F5F1;
-  --secondary-bg: #EAE5DE;
-  --card-bg: #FCFBF9;
-  --primary-text: #262626;
-  --secondary-text: #6B6762;
-  --primary-accent: #5E7388;
-  --secondary-accent: #8DA6BB;
-  --cta-button: #48637B;
-  --cta-hover: #354E66;
-  --border-color: #D7D1C8;
-  --success: #7F9385;
-  --highlight: #D7E3EC;
-}
-
 @theme {
   --font-sans: 'Instrument Sans', system-ui, sans-serif;
 
-  --color-panel: #F7F5F1;
-  --color-panel-alt: #EAE5DE;
-  --color-border: #D7D1C8;
-  --color-border-soft: #EAE5DE;
+  --color-panel: #F0F3F7;
+  --color-panel-alt: #E2E7EE;
+  --color-border: #CBD3DC;
+  --color-border-soft: #DEE3EA;
   --color-ink: #262626;
-  --color-ink-soft: #6B6762;
-  --color-muted: #6B6762;
-  --color-faint: #8DA6BB;
-  --color-fainter: #D7D1C8;
-  --color-placeholder: #D7D1C8;
+  --color-ink-soft: #5A6270;
+  --color-muted: #5C6773;
+  --color-faint: #506A7D;
+  --color-fainter: #576878;
+  --color-placeholder: #6E7E8E;
   --color-accent: #48637B;
   --color-accent-hover: #354E66;
   --color-danger: #c0402f;
@@ -56,6 +40,6 @@ a:hover {
   width: 10px;
 }
 *::-webkit-scrollbar-thumb {
-  background: #D7D1C8;
+  background: #CBD3DC;
   border-radius: 8px;
 }
