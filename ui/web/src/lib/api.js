@@ -1,5 +1,5 @@
 const TASK_FIELDS =
-  'name,due_on,completed,notes,assignee.gid,assignee.name,projects.gid,projects.name';
+  'name,due_on,completed,notes,created_at,assignee.gid,assignee.name,projects.gid,projects.name';
 const STORY_FIELDS = 'text,created_at,created_by.name,resource_subtype';
 
 async function apiFetch(path, options = {}) {

@@ -28,7 +28,7 @@ export default function App() {
   const [project, setProject] = useState('All');
   const [person, setPerson] = useState('Anyone');
   const [query, setQuery] = useState('');
-  const [sortBy, setSortBy] = useState('due');
+  const [sortBy, setSortBy] = useState('created');
   const [newTitle, setNewTitle] = useState('');
   const [selectedId, setSelectedId] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -79,6 +79,7 @@ export default function App() {
     });
     const far = '9999-99-99';
     out.sort((a, b) => {
+      if (sortBy === 'created') return (b.created_at ?? '').localeCompare(a.created_at ?? '');
       if (sortBy === 'name') return a.name.localeCompare(b.name);
       if (sortBy === 'project')
         return (
@@ -269,6 +270,7 @@ export default function App() {
                 onChange={(e) => setSortBy(e.target.value)}
                 className="appearance-none border-[1.5px] border-border bg-white rounded-full pl-3.5 pr-7 py-2 font-semibold text-[13px] text-ink cursor-pointer"
               >
+                <option value="created">Newest</option>
                 <option value="due">Due date</option>
                 <option value="project">Project</option>
                 <option value="name">Name</option>
