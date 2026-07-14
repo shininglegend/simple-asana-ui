@@ -1,5 +1,5 @@
 const TASK_FIELDS =
-  'name,due_on,completed,notes,created_at,assignee.gid,assignee.name,projects.gid,projects.name';
+  'name,due_on,completed,notes,created_at,assignee.gid,assignee.name,projects.gid,projects.name,custom_fields.gid,custom_fields.name,custom_fields.type,custom_fields.display_value,custom_fields.enum_value.gid,custom_fields.enum_value.name,custom_fields.enum_value.color,custom_fields.enum_options.gid,custom_fields.enum_options.name,custom_fields.enum_options.color,custom_fields.enum_options.enabled';
 const STORY_FIELDS = 'text,html_text,created_at,created_by.name,resource_subtype';
 
 async function apiFetch(path, options = {}) {
@@ -91,6 +91,13 @@ export function setTaskAssignee(taskGid, assigneeGid) {
   });
 }
 
+export function setTaskName(taskGid, name) {
+  return apiFetch(`tasks/${taskGid}`, {
+    method: 'PUT',
+    body: JSON.stringify({ data: { name } }),
+  });
+}
+
 export function createTask({ name, workspaceGid, projectGid, assigneeGid }) {
   return apiFetch('tasks', {
     method: 'POST',
@@ -131,5 +138,18 @@ export function removeTaskProject(taskGid, projectGid) {
   return apiFetch(`tasks/${taskGid}/removeProject`, {
     method: 'POST',
     body: JSON.stringify({ data: { project: projectGid } }),
+  });
+}
+
+export function setTaskCustomField(taskGid, customFieldGid, enumOptionGid) {
+  return apiFetch(`tasks/${taskGid}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      data: {
+        custom_fields: {
+          [customFieldGid]: enumOptionGid,
+        },
+      },
+    }),
   });
 }

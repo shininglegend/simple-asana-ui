@@ -1,7 +1,27 @@
 import { useEffect, useState, Fragment } from 'react';
 import { formatDateLong, isOverdue } from '../lib/format.js';
-import { colorForName } from '../lib/colors.js';
+import { colorForName, getStatusStyle } from '../lib/colors.js';
 import { getStories, addComment } from '../lib/api.js';
+
+const FALLBACK_OPTIONS = [
+  { gid: 'unknown', name: 'UNKNOWN - PLEASE CHANGE', color: 'orange' },
+  { gid: 'postponed', name: 'Postponed Idea', color: 'pink' },
+  { gid: 'waiting_jim', name: 'Waiting for Jim', color: 'red' },
+  { gid: 'waiting_resp', name: 'Waiting for response', color: 'teal' },
+  { gid: 'blocked', name: 'Not started, blocked', color: 'dark-gray' },
+  { gid: 'ready', name: 'Ready to be start', color: 'light-gray' },
+  { gid: 'delay', name: 'In Progress, facing delays', color: 'yellow' },
+  { gid: 'schedule', name: 'In Progress, on schedule', color: 'light-green' },
+  { gid: 'completed', name: 'Completed', color: 'green' },
+  { gid: 'canceled', name: 'Canceled', color: 'purple' },
+];
+
+const FALLBACK_STATUS_FIELD = {
+  gid: 'mock_status_field_gid',
+  name: 'Status',
+  type: 'enum',
+  enum_options: FALLBACK_OPTIONS,
+};
 
 export default function TaskDetailModal({
   task,
@@ -12,17 +32,35 @@ export default function TaskDetailModal({
   onClose,
   onToggle,
   onNotesChange,
+  onNameChange,
   onDueChange,
   onAssigneeChange,
+  onCustomFieldChange,
+  globalStatusField,
   people = [],
   isMobile,
 }) {
   const [dueDate, setDueDate] = useState(task.due_on ?? null);
   const [notes, setNotes] = useState(task.notes ?? '');
+  const [name, setName] = useState(task.name ?? '');
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(true);
   const [commentError, setCommentError] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const handleCopyLink = () => {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('task', task.gid);
+      navigator.clipboard.writeText(url.toString());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+    }
+  };
 
   useEffect(() => {
     setDueDate(task.due_on ?? null);
@@ -31,6 +69,10 @@ export default function TaskDetailModal({
   useEffect(() => {
     setNotes(task.notes ?? '');
   }, [task.gid, task.notes]);
+
+  useEffect(() => {
+    setName(task.name ?? '');
+  }, [task.gid, task.name]);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,6 +102,12 @@ export default function TaskDetailModal({
   const done = !!task.completed;
   const overdue = isOverdue(dueDate, done);
   const availableProjects = projects.filter((p) => !task.projects?.some((tp) => tp.gid === p.gid));
+  const statusField =
+    task.custom_fields?.find((f) => f.name?.toLowerCase() === 'status') ||
+    globalStatusField ||
+    FALLBACK_STATUS_FIELD;
+  const currentStatus =
+    task.custom_fields?.find((f) => f.name?.toLowerCase() === 'status')?.enum_value || null;
 
   async function submitComment(e) {
     if (e.key !== 'Enter') return;
@@ -186,6 +234,88 @@ export default function TaskDetailModal({
           )}
         </div>
       </div>
+      <div className="flex flex-col gap-1 relative">
+        <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
+          Status
+        </span>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className={`flex items-center gap-1.5 cursor-pointer transition-colors outline-none select-none h-[24px] rounded px-2.5 py-0.5 font-semibold text-[11px] ${
+              currentStatus
+                ? 'border'
+                : 'border border-dashed border-accent text-accent hover:bg-[#faf8f4] bg-transparent'
+            }`}
+            style={
+              currentStatus
+                ? {
+                    backgroundColor: getStatusStyle(currentStatus.name, currentStatus.color).bg,
+                    color: getStatusStyle(currentStatus.name, currentStatus.color).text,
+                    borderColor: getStatusStyle(currentStatus.name, currentStatus.color).border,
+                  }
+                : {}
+            }
+          >
+            <span>{currentStatus ? currentStatus.name : 'Select status'}</span>
+            <span
+              className="text-[8px]"
+              style={{ color: currentStatus ? 'currentColor' : 'var(--color-fainter)' }}
+            >
+              ▼
+            </span>
+          </button>
+
+          {dropdownOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
+              <div className="absolute left-0 mt-1.5 z-20 w-[240px] bg-[#252525] border border-[#383838] rounded-xl shadow-lg shadow-black/40 py-1.5 overflow-hidden flex flex-col font-sans">
+                {statusField.enum_options?.map((opt) => {
+                  const style = getStatusStyle(opt.name, opt.color);
+                  return (
+                    <button
+                      key={opt.gid}
+                      type="button"
+                      onClick={() => {
+                        onCustomFieldChange(task.gid, statusField.gid, opt.gid);
+                        setDropdownOpen(false);
+                      }}
+                      className="relative w-full flex items-center gap-2 px-3 py-1.5 text-left border-0 bg-transparent text-white hover:bg-white/5 cursor-pointer transition-colors group"
+                    >
+                      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="w-4 flex items-center justify-center text-[10px] font-bold text-white/80 select-none">
+                        {currentStatus?.gid === opt.gid ? '✓' : ''}
+                      </div>
+                      <span
+                        className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border"
+                        style={{
+                          backgroundColor: style.bg,
+                          color: style.text,
+                          borderColor: style.border,
+                        }}
+                      >
+                        {opt.name}
+                      </span>
+                    </button>
+                  );
+                })}
+                {currentStatus && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onCustomFieldChange(task.gid, statusField.gid, null);
+                      setDropdownOpen(false);
+                    }}
+                    className="w-full flex items-center justify-center py-2 mt-1 text-xs text-white/60 hover:text-white border-t border-[#383838] bg-transparent cursor-pointer transition-colors"
+                  >
+                    Clear status
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
       <div className="flex flex-col gap-1">
         <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
           Assignee
@@ -222,7 +352,7 @@ export default function TaskDetailModal({
       onChange={(e) => setNotes(e.target.value)}
       onBlur={() => notes !== (task.notes ?? '') && onNotesChange(task.gid, notes)}
       placeholder="Add more detail…"
-      className="w-full box-border min-h-[74px] resize-y border border-border rounded-[10px] px-3.5 py-2.5 text-sm text-ink outline-none bg-panel-alt"
+      className="w-full box-border min-h-[175px] resize-y border border-border rounded-[10px] px-3.5 py-2.5 text-sm text-ink outline-none bg-panel-alt"
     />
   );
 
@@ -270,7 +400,7 @@ export default function TaskDetailModal({
   if (isMobile) {
     return (
       <div className="fixed inset-0 z-50 bg-panel flex flex-col">
-        <div className="flex-none bg-panel-alt border-b border-border px-3 pb-3.5 pt-[calc(env(safe-area-inset-top)+14px)] flex items-center gap-2">
+        <div className="flex-none bg-panel-alt border-b border-border px-3 pb-3.5 pt-[calc(env(safe-area-inset-top)+14px)] flex items-center justify-between gap-2">
           <button
             type="button"
             onClick={onClose}
@@ -278,14 +408,43 @@ export default function TaskDetailModal({
           >
             ‹ Tasks
           </button>
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-border bg-panel text-[12px] font-semibold text-ink-soft hover:bg-panel-alt transition-colors cursor-pointer select-none"
+          >
+            {copied ? (
+              <>
+                <span className="text-[10px] font-bold text-accent">✓</span>
+                <span>Copied!</span>
+              </>
+            ) : (
+              <>
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                </svg>
+                <span>Copy link</span>
+              </>
+            )}
+          </button>
         </div>
         <div className="flex-1 overflow-auto px-4.5 pt-5 pb-7 flex flex-col gap-5">
-          <div className="flex items-start gap-3">
+          <div className="flex items-center gap-3">
             <button
               type="button"
               aria-label="toggle complete"
               onClick={() => onToggle(task.gid, !done)}
-              className={`w-[26px] h-[26px] flex-none mt-0.5 rounded-lg border-2 flex items-center justify-center cursor-pointer ${
+              className={`w-[26px] h-[26px] flex-none rounded-lg border-2 flex items-center justify-center cursor-pointer ${
                 done ? 'bg-accent border-accent' : 'bg-panel border-border'
               }`}
             >
@@ -293,13 +452,38 @@ export default function TaskDetailModal({
                 <span className="w-[7px] h-3 border-white border-solid border-r-[2.5px] border-b-[2.5px] rotate-[43deg] -mt-0.5" />
               )}
             </button>
-            <h2
-              className={`flex-1 min-w-0 m-0 font-bold text-xl leading-snug ${
+            <textarea
+              ref={(el) => {
+                if (el) {
+                  el.style.height = 'auto';
+                  el.style.height = `${el.scrollHeight}px`;
+                }
+              }}
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = `${e.target.scrollHeight}px`;
+              }}
+              onBlur={() => {
+                const trimmed = name.trim();
+                if (trimmed && trimmed !== (task.name ?? '')) {
+                  onNameChange(task.gid, trimmed);
+                } else if (!trimmed) {
+                  setName(task.name ?? '');
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  e.target.blur();
+                }
+              }}
+              rows={1}
+              className={`flex-1 min-w-0 m-0 font-bold text-xl leading-snug bg-transparent border border-transparent hover:border-border-soft hover:bg-panel-alt/30 focus:bg-white focus:border-border focus:ring-1 focus:ring-accent rounded px-1.5 py-1 -mx-1.5 -my-1 outline-none resize-none overflow-hidden transition-all duration-150 ${
                 done ? 'text-fainter line-through' : 'text-ink'
               }`}
-            >
-              {task.name}
-            </h2>
+            />
           </div>
 
           {(!task.projects || task.projects.length === 0) && (
@@ -341,12 +525,12 @@ export default function TaskDetailModal({
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-[560px] bg-panel rounded-2xl shadow-[0_24px_60px_rgba(40,32,20,0.28)] overflow-hidden"
       >
-        <div className="flex items-start gap-3.5 px-6.5 pt-6 pb-4.5 border-b border-border-soft">
+        <div className="flex items-center gap-3.5 px-6.5 pt-6 pb-4.5 border-b border-border-soft">
           <button
             type="button"
             aria-label="toggle complete"
             onClick={() => onToggle(task.gid, !done)}
-            className={`w-[26px] h-[26px] flex-none mt-0.5 rounded-lg border-2 flex items-center justify-center cursor-pointer ${
+            className={`w-[26px] h-[26px] flex-none rounded-lg border-2 flex items-center justify-center cursor-pointer ${
               done ? 'bg-accent border-accent' : 'bg-panel border-border'
             }`}
           >
@@ -354,13 +538,62 @@ export default function TaskDetailModal({
               <span className="w-[7px] h-3 border-white border-solid border-r-[2.5px] border-b-[2.5px] rotate-[43deg] -mt-0.5" />
             )}
           </button>
-          <h2
-            className={`flex-1 min-w-0 mt-0.5 font-bold text-xl ${
+          <textarea
+            ref={(el) => {
+              if (el) {
+                el.style.height = 'auto';
+                el.style.height = `${el.scrollHeight}px`;
+              }
+            }}
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              e.target.style.height = 'auto';
+              e.target.style.height = `${e.target.scrollHeight}px`;
+            }}
+            onBlur={() => {
+              const trimmed = name.trim();
+              if (trimmed && trimmed !== (task.name ?? '')) {
+                onNameChange(task.gid, trimmed);
+              } else if (!trimmed) {
+                setName(task.name ?? '');
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                e.target.blur();
+              }
+            }}
+            rows={1}
+            className={`flex-1 min-w-0 mt-0.5 font-bold text-xl bg-transparent border border-transparent hover:border-border-soft hover:bg-panel-alt/30 focus:bg-white focus:border-border focus:ring-1 focus:ring-accent rounded px-1.5 py-1 -mx-1.5 -my-1 outline-none resize-none overflow-hidden transition-all duration-150 ${
               done ? 'text-fainter line-through' : 'text-ink'
             }`}
+          />
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            title="Copy task link"
+            className="flex-none flex items-center justify-center w-[30px] h-[30px] border-0 bg-[#f3efe8] rounded-lg text-muted hover:bg-border hover:text-ink cursor-pointer transition-colors"
           >
-            {task.name}
-          </h2>
+            {copied ? (
+              <span className="text-[10px] font-bold text-accent">✓</span>
+            ) : (
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+              </svg>
+            )}
+          </button>
           <button
             type="button"
             aria-label="close"

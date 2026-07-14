@@ -3,7 +3,7 @@ import FilterGroup from './components/FilterGroup.jsx';
 import MultiFilterGroup from './components/MultiFilterGroup.jsx';
 import TaskRow from './components/TaskRow.jsx';
 import TaskDetailModal from './components/TaskDetailModal.jsx';
-import { assignProjectColors } from './lib/colors.js';
+import { assignProjectColors, STATUS_OPTION_STYLES } from './lib/colors.js';
 import { useIsMobile } from './lib/useIsMobile.js';
 import {
   getMe,
@@ -14,10 +14,12 @@ import {
   setTaskNotes,
   setTaskDueDate,
   setTaskAssignee,
+  setTaskName,
   createTask,
   getMyTasks,
   addTaskProject,
   removeTaskProject,
+  setTaskCustomField,
 } from './lib/api.js';
 
 const STATUS_OPTIONS = ['Incomplete', 'Complete', 'All'];
@@ -50,6 +52,14 @@ export default function App() {
   const [selectedPeople, setSelectedPeople] = useState(() => {
     try {
       const val = localStorage.getItem('asana_filter_people');
+      return val !== null ? JSON.parse(val) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [selectedCustomStatuses, setSelectedCustomStatuses] = useState(() => {
+    try {
+      const val = localStorage.getItem('asana_filter_custom_statuses');
       return val !== null ? JSON.parse(val) : null;
     } catch {
       return null;
@@ -147,6 +157,21 @@ export default function App() {
 
   useEffect(() => {
     try {
+      if (selectedCustomStatuses === null) {
+        localStorage.removeItem('asana_filter_custom_statuses');
+      } else {
+        localStorage.setItem(
+          'asana_filter_custom_statuses',
+          JSON.stringify(selectedCustomStatuses),
+        );
+      }
+    } catch (e) {
+      console.error('Error saving custom statuses filter:', e);
+    }
+  }, [selectedCustomStatuses]);
+
+  useEffect(() => {
+    try {
       localStorage.setItem('asana_filter_query', query);
     } catch (e) {
       console.error('Error saving query filter:', e);
@@ -221,6 +246,14 @@ export default function App() {
     return map;
   }, [projects]);
 
+  const globalStatusField = useMemo(() => {
+    for (const t of tasks) {
+      const f = t.custom_fields?.find((field) => field.name?.toLowerCase() === 'status');
+      if (f) return f;
+    }
+    return null;
+  }, [tasks]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const out = tasks.filter((t) => {
@@ -234,6 +267,12 @@ export default function App() {
       if (selectedPeople !== null) {
         const assigneeName = t.assignee ? t.assignee.name : 'Unassigned';
         if (!selectedPeople.includes(assigneeName)) return false;
+      }
+      if (selectedCustomStatuses !== null) {
+        const taskStatus =
+          t.custom_fields?.find((f) => f.name?.toLowerCase() === 'status')?.enum_value?.name ??
+          'None';
+        if (!selectedCustomStatuses.includes(taskStatus)) return false;
       }
       return true;
     });
@@ -252,6 +291,15 @@ export default function App() {
         }
       } else if (sortBy === 'assignee') {
         comparison = (a.assignee?.name ?? '').localeCompare(b.assignee?.name ?? '');
+      } else if (sortBy === 'status') {
+        const aStatus =
+          a.custom_fields?.find((f) => f.name?.toLowerCase() === 'status')?.enum_value?.name ?? '';
+        const bStatus =
+          b.custom_fields?.find((f) => f.name?.toLowerCase() === 'status')?.enum_value?.name ?? '';
+        comparison = aStatus.localeCompare(bStatus);
+        if (comparison === 0) {
+          comparison = (a.due_on ?? near).localeCompare(b.due_on ?? near);
+        }
       } else if (sortBy === 'due') {
         comparison = (a.due_on ?? near).localeCompare(b.due_on ?? near);
       } else {
@@ -260,7 +308,16 @@ export default function App() {
       return comparison * multiplier;
     });
     return out;
-  }, [tasks, query, status, selectedProjects, selectedPeople, sortBy, sortOrder]);
+  }, [
+    tasks,
+    query,
+    status,
+    selectedProjects,
+    selectedPeople,
+    selectedCustomStatuses,
+    sortBy,
+    sortOrder,
+  ]);
 
   const selected = tasks.find((t) => t.gid === selectedId) ?? null;
 
@@ -279,6 +336,15 @@ export default function App() {
     setSelectedPeople((prev) => {
       if (prev === null)
         return [...people.map((p) => p.name), 'Unassigned'].filter((n) => n !== name);
+      return prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name];
+    });
+  }
+
+  function toggleCustomStatus(name) {
+    setSelectedCustomStatuses((prev) => {
+      if (prev === null) {
+        return [...Object.keys(STATUS_OPTION_STYLES), 'None'].filter((n) => n !== name);
+      }
       return prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name];
     });
   }
@@ -327,6 +393,17 @@ export default function App() {
     }
   }
 
+  async function handleNameChange(gid, name) {
+    const prev = tasks.find((t) => t.gid === gid)?.name;
+    updateTaskLocal(gid, { name });
+    try {
+      await setTaskName(gid, name);
+    } catch {
+      updateTaskLocal(gid, { name: prev });
+      setWriteError("Couldn't save the task name in Asana.");
+    }
+  }
+
   async function handleNotesChange(gid, notes) {
     const prev = tasks.find((t) => t.gid === gid)?.notes;
     updateTaskLocal(gid, { notes });
@@ -358,6 +435,51 @@ export default function App() {
     } catch {
       updateTaskLocal(gid, { assignee: prev });
       setWriteError("Couldn't save the assignee in Asana.");
+    }
+  }
+
+  async function handleCustomFieldChange(taskGid, customFieldGid, enumOptionGid) {
+    const task = tasks.find((t) => t.gid === taskGid);
+    if (!task) return;
+    const prevCustomFields = task.custom_fields ?? [];
+
+    const hasField = prevCustomFields.some((f) => f.gid === customFieldGid);
+    let newCustomFields;
+    if (hasField) {
+      newCustomFields = prevCustomFields.map((f) => {
+        if (f.gid === customFieldGid) {
+          const enum_value = enumOptionGid
+            ? f.enum_options?.find((opt) => opt.gid === enumOptionGid) || null
+            : null;
+          return { ...f, enum_value, display_value: enum_value ? enum_value.name : '' };
+        }
+        return f;
+      });
+    } else {
+      const templateField = globalStatusField;
+      if (templateField) {
+        const enum_value = enumOptionGid
+          ? templateField.enum_options?.find((opt) => opt.gid === enumOptionGid) || null
+          : null;
+        newCustomFields = [
+          ...prevCustomFields,
+          {
+            ...templateField,
+            enum_value,
+            display_value: enum_value ? enum_value.name : '',
+          },
+        ];
+      } else {
+        newCustomFields = prevCustomFields;
+      }
+    }
+
+    updateTaskLocal(taskGid, { custom_fields: newCustomFields });
+    try {
+      await setTaskCustomField(taskGid, customFieldGid, enumOptionGid);
+    } catch {
+      updateTaskLocal(taskGid, { custom_fields: prevCustomFields });
+      setWriteError("Couldn't update the status in Asana.");
     }
   }
 
@@ -456,7 +578,8 @@ export default function App() {
   const activeFilterCount =
     (status !== 'Incomplete' ? 1 : 0) +
     (selectedProjects !== null ? 1 : 0) +
-    (selectedPeople !== null ? 1 : 0);
+    (selectedPeople !== null ? 1 : 0) +
+    (selectedCustomStatuses !== null ? 1 : 0);
   const countLabel = `${filtered.length} ${filtered.length === 1 ? 'task' : 'tasks'} in this view`;
 
   const filterGroups = (
@@ -484,6 +607,7 @@ export default function App() {
           >
             <option value="created">Newest</option>
             <option value="due">Due date</option>
+            <option value="status">Status</option>
             <option value="project">Project</option>
             <option value="name">Name</option>
             <option value="assignee">Who</option>
@@ -505,6 +629,14 @@ export default function App() {
         onToggle={togglePerson}
         onSelectAll={() => setSelectedPeople(null)}
         onSelectNone={() => setSelectedPeople([])}
+      />
+      <MultiFilterGroup
+        label="Status"
+        options={[...Object.keys(STATUS_OPTION_STYLES), 'None']}
+        selected={selectedCustomStatuses}
+        onToggle={toggleCustomStatus}
+        onSelectAll={() => setSelectedCustomStatuses(null)}
+        onSelectNone={() => setSelectedCustomStatuses([])}
       />
     </>
   );
@@ -606,6 +738,7 @@ export default function App() {
               >
                 <option value="created">Newest</option>
                 <option value="due">Due date</option>
+                <option value="status">Status</option>
                 <option value="project">Project</option>
                 <option value="name">Name</option>
                 <option value="assignee">Who</option>
@@ -626,11 +759,12 @@ export default function App() {
         {/* Card C: Task List */}
         <div className="bg-white rounded-xl shadow-xs border border-border-soft overflow-hidden">
           {/* Desktop Table Headers */}
-          <div className="hidden md:grid grid-cols-[22px_minmax(0,1fr)_96px_96px_210px_150px] items-center gap-x-4 px-6 pt-4 pb-3 border-b border-border-soft font-semibold text-[11px] tracking-wider uppercase text-fainter bg-slate-50/10">
+          <div className="hidden md:grid grid-cols-[22px_minmax(0,1fr)_70px_70px_100px_210px_150px] items-center gap-x-4 px-6 pt-4 pb-3 border-b border-border-soft font-semibold text-[11px] tracking-wider uppercase text-fainter bg-slate-50/10">
             <span />
             {renderHeader('Task', 'name')}
             {renderHeader('Created', 'created')}
             {renderHeader('Due', 'due')}
+            {renderHeader('Status', 'status')}
             {renderHeader('Project', 'project')}
             {renderHeader('Who', 'assignee')}
           </div>
@@ -708,8 +842,11 @@ export default function App() {
           onClose={() => handleSelectId(null)}
           onToggle={handleToggle}
           onNotesChange={handleNotesChange}
+          onNameChange={handleNameChange}
           onDueChange={handleDueChange}
           onAssigneeChange={handleAssigneeChange}
+          onCustomFieldChange={handleCustomFieldChange}
+          globalStatusField={globalStatusField}
           people={people}
           isMobile={isMobile}
         />

@@ -1,4 +1,5 @@
 import { formatDateShort, isOverdue } from '../lib/format.js';
+import { getStatusStyle } from '../lib/colors.js';
 
 function Checkbox({ done, onToggle, size = 22 }) {
   return (
@@ -27,6 +28,8 @@ export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobil
   const done = !!task.completed;
   const overdue = isOverdue(task.due_on, done);
   const assigneeName = task.assignee?.name;
+  const currentStatus =
+    task.custom_fields?.find((f) => f.name?.toLowerCase() === 'status')?.enum_value || null;
 
   if (isMobile) {
     return (
@@ -51,6 +54,18 @@ export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobil
             >
               {formatDateShort(task.due_on)}
             </span>
+            {currentStatus && (
+              <span
+                className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold border truncate max-w-[90px]"
+                style={{
+                  backgroundColor: getStatusStyle(currentStatus.name, currentStatus.color).bg,
+                  color: getStatusStyle(currentStatus.name, currentStatus.color).text,
+                  borderColor: getStatusStyle(currentStatus.name, currentStatus.color).border,
+                }}
+              >
+                {currentStatus.name}
+              </span>
+            )}
             <span className="flex items-center gap-1.5 flex-wrap min-w-0">
               {task.projects && task.projects.length > 0 ? (
                 task.projects.map((p) => {
@@ -90,7 +105,7 @@ export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobil
   return (
     <div
       onClick={() => onOpen(task.gid)}
-      className="grid grid-cols-[22px_minmax(0,1fr)_96px_96px_210px_150px] items-center gap-x-4 py-2.5 cursor-pointer hover:bg-[#faf8f4] transition-colors"
+      className="grid grid-cols-[22px_minmax(0,1fr)_70px_70px_100px_210px_150px] items-center gap-x-4 py-2.5 cursor-pointer hover:bg-[#faf8f4] transition-colors"
     >
       <Checkbox done={done} onToggle={() => onToggle(task.gid, !done)} />
 
@@ -112,6 +127,24 @@ export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobil
         }`}
       >
         {formatDateShort(task.due_on)}
+      </span>
+
+      <span className="flex items-center min-w-0">
+        {currentStatus ? (
+          <span
+            className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border truncate max-w-[90px]"
+            style={{
+              backgroundColor: getStatusStyle(currentStatus.name, currentStatus.color).bg,
+              color: getStatusStyle(currentStatus.name, currentStatus.color).text,
+              borderColor: getStatusStyle(currentStatus.name, currentStatus.color).border,
+            }}
+            title={currentStatus.name}
+          >
+            {currentStatus.name}
+          </span>
+        ) : (
+          <span className="text-[10px] text-placeholder italic">-</span>
+        )}
       </span>
 
       <span className="flex items-center gap-1 flex-wrap min-w-0">

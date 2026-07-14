@@ -12,3 +12,39 @@ export function colorForName(name) {
   for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
   return PALETTE[hash % PALETTE.length];
 }
+
+export const STATUS_OPTION_STYLES = {
+  'UNKNOWN - PLEASE CHANGE': { bg: '#fed7aa', text: '#7c2d12', border: '#f97316' },
+  'Postponed Idea': { bg: '#fbcfe8', text: '#9d174d', border: '#ec4899' },
+  'Waiting for Jim': { bg: '#fecaca', text: '#991b1b', border: '#ef4444' },
+  'Waiting for response': { bg: '#ccfbf1', text: '#115e59', border: '#99f6e4' },
+  'Not started, blocked': { bg: '#374151', text: '#ffffff', border: '#4b5563' },
+  'Ready to be start': { bg: '#e5e7eb', text: '#374151', border: '#9ca3af' },
+  'In Progress, facing delays': { bg: '#fef08a', text: '#854d0e', border: '#eab308' },
+  'In Progress, on schedule': { bg: '#bbf7d0', text: '#166534', border: '#22c55e' },
+  Completed: { bg: '#d1fae5', text: '#065f46', border: '#a7f3d0' },
+  Canceled: { bg: '#f3e8ff', text: '#6b21a8', border: '#e9d5ff' },
+};
+
+export const ASANA_COLOR_MAP = {
+  orange: { bg: '#ffedd5', text: '#9a3412', border: '#fed7aa' },
+  pink: { bg: '#fce7f3', text: '#9d174d', border: '#fbcfe8' },
+  red: { bg: '#fee2e2', text: '#991b1b', border: '#fecaca' },
+  teal: { bg: '#ccfbf1', text: '#115e59', border: '#99f6e4' },
+  'dark-gray': { bg: '#374151', text: '#ffffff', border: '#4b5563' },
+  'light-gray': { bg: '#f3f4f6', text: '#374151', border: '#e5e7eb' },
+  yellow: { bg: '#fef9c3', text: '#854d0e', border: '#fef08a' },
+  'yellow-green': { bg: '#dcfce7', text: '#166534', border: '#bbf7d0' },
+  green: { bg: '#d1fae5', text: '#065f46', border: '#a7f3d0' },
+  purple: { bg: '#f3e8ff', text: '#6b21a8', border: '#e9d5ff' },
+};
+
+export function getStatusStyle(optionName, optionColor) {
+  if (STATUS_OPTION_STYLES[optionName]) {
+    return STATUS_OPTION_STYLES[optionName];
+  }
+  const color = optionColor || 'cool-gray';
+  const mapped = ASANA_COLOR_MAP[color];
+  if (mapped) return mapped;
+  return { bg: '#f3f4f6', text: '#1f2937', border: '#e5e7eb' };
+}
