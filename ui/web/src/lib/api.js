@@ -31,9 +31,27 @@ export function getWorkspaceUsers(workspaceGid) {
   return apiFetch(`workspaces/${workspaceGid}/users?opt_fields=name,gid`);
 }
 
+// Asana enforces concurrency/rate limits, so cap the per-project fan-out.
+const MAX_CONCURRENT_REQUESTS = 8;
+
+async function mapLimit(items, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i]);
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(MAX_CONCURRENT_REQUESTS, items.length) }, worker),
+  );
+  return results;
+}
+
 export async function getTasksForProjects(projectGids) {
-  const perProject = await Promise.all(
-    projectGids.map((gid) => apiFetch(`projects/${gid}/tasks?opt_fields=${TASK_FIELDS}`)),
+  const perProject = await mapLimit(projectGids, (gid) =>
+    apiFetch(`projects/${gid}/tasks?opt_fields=${TASK_FIELDS}`),
   );
   const byGid = new Map();
   for (const list of perProject) {

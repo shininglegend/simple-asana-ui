@@ -23,7 +23,15 @@ export async function onRequest({ request, env, params }) {
 
   const url = new URL(request.url);
   const segments = Array.isArray(params.path) ? params.path : [];
-  const target = `${API_BASE}/${segments.join('/')}${url.search}`;
+  // Keep the proxy jailed under API_BASE: refuse traversal segments, and
+  // re-encode each segment so a decoded "/" can't smuggle in extra ones.
+  if (segments.length === 0 || segments.some((s) => s === '' || s === '.' || s === '..')) {
+    return new Response(JSON.stringify({ errors: [{ message: 'Invalid path' }] }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  const target = `${API_BASE}/${segments.map(encodeURIComponent).join('/')}${url.search}`;
 
   // Buffer the body up front so the request can be retried after a refresh.
   const hasBody = !['GET', 'HEAD'].includes(request.method);

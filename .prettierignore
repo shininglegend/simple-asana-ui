@@ -3,3 +3,5 @@ dist/
 .wrangler/
 package-lock.json
 .env*
+.claude/
+public/

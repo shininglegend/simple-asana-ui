@@ -13,7 +13,14 @@ export function parseCookies(request) {
     const eq = part.indexOf('=');
     if (eq === -1) continue;
     const name = part.slice(0, eq).trim();
-    if (name) cookies[name] = decodeURIComponent(part.slice(eq + 1).trim());
+    if (!name) continue;
+    const value = part.slice(eq + 1).trim();
+    try {
+      cookies[name] = decodeURIComponent(value);
+    } catch {
+      // Malformed percent-encoding must not turn into a 500 — keep it verbatim.
+      cookies[name] = value;
+    }
   }
   return cookies;
 }

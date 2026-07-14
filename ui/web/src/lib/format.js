@@ -14,6 +14,12 @@ export function formatDateLong(iso) {
 
 export function isOverdue(iso, done) {
   if (!iso || done) return false;
-  const today = new Date().toISOString().slice(0, 10);
+  // Compare in local time — due dates render in local time too.
+  const now = new Date();
+  const today = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+  ].join('-');
   return iso < today;
 }

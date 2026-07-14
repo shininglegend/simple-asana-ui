@@ -15,6 +15,7 @@ export default function TaskDetailModal({
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(true);
+  const [commentError, setCommentError] = useState(null);
 
   useEffect(() => {
     setNotes(task.notes ?? '');
@@ -23,6 +24,7 @@ export default function TaskDetailModal({
   useEffect(() => {
     let cancelled = false;
     setLoadingComments(true);
+    setCommentError(null);
     getStories(task.gid)
       .then((stories) => {
         if (cancelled) return;
@@ -36,6 +38,7 @@ export default function TaskDetailModal({
             })),
         );
       })
+      .catch(() => !cancelled && setCommentError('Couldn’t load comments.'))
       .finally(() => !cancelled && setLoadingComments(false));
     return () => {
       cancelled = true;
@@ -52,15 +55,21 @@ export default function TaskDetailModal({
     const text = newComment.trim();
     if (!text) return;
     setNewComment('');
-    const story = await addComment(task.gid, text);
-    setComments((c) => [
-      ...c,
-      {
-        author: story.created_by?.name ?? 'You',
-        time: new Date(story.created_at).toLocaleString(),
-        text,
-      },
-    ]);
+    try {
+      const story = await addComment(task.gid, text);
+      setComments((c) => [
+        ...c,
+        {
+          author: story.created_by?.name ?? 'You',
+          time: new Date(story.created_at).toLocaleString(),
+          text,
+        },
+      ]);
+      setCommentError(null);
+    } catch {
+      setNewComment(text);
+      setCommentError("Couldn't post the comment.");
+    }
   }
 
   const metaFields = (
@@ -127,9 +136,10 @@ export default function TaskDetailModal({
             </div>
           </div>
         ))}
-      {!loadingComments && comments.length === 0 && (
+      {!loadingComments && comments.length === 0 && !commentError && (
         <span className="text-[13px] text-placeholder">No comments yet.</span>
       )}
+      {commentError && <span className="text-[13px] font-medium text-danger">{commentError}</span>}
     </>
   );
 

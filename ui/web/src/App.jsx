@@ -23,6 +23,7 @@ export default function App() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [writeError, setWriteError] = useState(null);
 
   const [status, setStatus] = useState('Incomplete');
   const [project, setProject] = useState('All');
@@ -57,6 +58,12 @@ export default function App() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (!writeError) return undefined;
+    const timer = setTimeout(() => setWriteError(null), 5000);
+    return () => clearTimeout(timer);
+  }, [writeError]);
 
   const projectColors = useMemo(() => assignProjectColors(projects), [projects]);
   const projectByName = useMemo(() => {
@@ -98,13 +105,25 @@ export default function App() {
   }
 
   async function handleToggle(gid, completed) {
+    const prev = tasks.find((t) => t.gid === gid)?.completed;
     updateTaskLocal(gid, { completed });
-    await setTaskCompleted(gid, completed);
+    try {
+      await setTaskCompleted(gid, completed);
+    } catch {
+      updateTaskLocal(gid, { completed: prev });
+      setWriteError("Couldn't update the task in Asana.");
+    }
   }
 
   async function handleNotesChange(gid, notes) {
+    const prev = tasks.find((t) => t.gid === gid)?.notes;
     updateTaskLocal(gid, { notes });
-    await setTaskNotes(gid, notes);
+    try {
+      await setTaskNotes(gid, notes);
+    } catch {
+      updateTaskLocal(gid, { notes: prev });
+      setWriteError("Couldn't save the description in Asana.");
+    }
   }
 
   async function handleAddTask() {
@@ -116,20 +135,25 @@ export default function App() {
       person !== 'Anyone' && person !== 'Unassigned'
         ? people.find((p) => p.name === person)?.gid
         : null;
-    const created = await createTask({
-      name: title,
-      workspaceGid,
-      projectGid: targetProject?.gid,
-      assigneeGid,
-    });
-    setTasks((ts) => [
-      {
-        ...created,
-        projects: targetProject ? [targetProject] : [],
-        assignee: assigneeGid ? people.find((p) => p.gid === assigneeGid) : null,
-      },
-      ...ts,
-    ]);
+    try {
+      const created = await createTask({
+        name: title,
+        workspaceGid,
+        projectGid: targetProject?.gid,
+        assigneeGid,
+      });
+      setTasks((ts) => [
+        {
+          ...created,
+          projects: targetProject ? [targetProject] : [],
+          assignee: assigneeGid ? people.find((p) => p.gid === assigneeGid) : null,
+        },
+        ...ts,
+      ]);
+    } catch {
+      setNewTitle(title);
+      setWriteError("Couldn't create the task in Asana.");
+    }
   }
 
   if (loading) {
@@ -351,6 +375,12 @@ export default function App() {
           )}
         </div>
       </div>
+
+      {writeError && (
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+20px)] left-1/2 -translate-x-1/2 z-[60] max-w-[90vw] bg-ink text-white font-medium text-[13px] px-4 py-2.5 rounded-full shadow-[0_8px_24px_rgba(40,32,20,0.3)] whitespace-nowrap overflow-hidden text-ellipsis">
+          {writeError}
+        </div>
+      )}
 
       {selected && (
         <TaskDetailModal
