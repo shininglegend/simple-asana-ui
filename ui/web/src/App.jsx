@@ -66,6 +66,14 @@ export default function App() {
       return 'created';
     }
   });
+  const [sortOrder, setSortOrder] = useState(() => {
+    try {
+      const val = localStorage.getItem('asana_filter_sortOrder');
+      return val !== null ? val : 'desc';
+    } catch {
+      return 'desc';
+    }
+  });
   const [newTitle, setNewTitle] = useState('');
   const [selectedId, setSelectedId] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(() => {
@@ -124,6 +132,14 @@ export default function App() {
       console.error('Error saving sortBy:', e);
     }
   }, [sortBy]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('asana_filter_sortOrder', sortOrder);
+    } catch (e) {
+      console.error('Error saving sortOrder:', e);
+    }
+  }, [sortOrder]);
 
   useEffect(() => {
     try {
@@ -188,18 +204,29 @@ export default function App() {
       return true;
     });
     const far = '9999-99-99';
+    const multiplier = sortOrder === 'desc' ? -1 : 1;
     out.sort((a, b) => {
-      if (sortBy === 'created') return (b.created_at ?? '').localeCompare(a.created_at ?? '');
-      if (sortBy === 'name') return a.name.localeCompare(b.name);
-      if (sortBy === 'project')
-        return (
-          (a.projects?.[0]?.name ?? '').localeCompare(b.projects?.[0]?.name ?? '') ||
-          (a.due_on ?? far).localeCompare(b.due_on ?? far)
-        );
-      return (a.due_on ?? far).localeCompare(b.due_on ?? far);
+      let comparison = 0;
+      if (sortBy === 'created') {
+        comparison = (a.created_at ?? '').localeCompare(b.created_at ?? '');
+      } else if (sortBy === 'name') {
+        comparison = a.name.localeCompare(b.name);
+      } else if (sortBy === 'project') {
+        comparison = (a.projects?.[0]?.name ?? '').localeCompare(b.projects?.[0]?.name ?? '');
+        if (comparison === 0) {
+          comparison = (a.due_on ?? far).localeCompare(b.due_on ?? far);
+        }
+      } else if (sortBy === 'assignee') {
+        comparison = (a.assignee?.name ?? '').localeCompare(b.assignee?.name ?? '');
+      } else if (sortBy === 'due') {
+        comparison = (a.due_on ?? far).localeCompare(b.due_on ?? far);
+      } else {
+        comparison = (a.due_on ?? far).localeCompare(b.due_on ?? far);
+      }
+      return comparison * multiplier;
     });
     return out;
-  }, [tasks, query, status, selectedProjects, selectedPeople, sortBy]);
+  }, [tasks, query, status, selectedProjects, selectedPeople, sortBy, sortOrder]);
 
   const selected = tasks.find((t) => t.gid === selectedId) ?? null;
 
@@ -221,6 +248,39 @@ export default function App() {
       return prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name];
     });
   }
+
+  function handleSort(field) {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(field);
+      setSortOrder(field === 'created' ? 'desc' : 'asc');
+    }
+  }
+
+  const renderHeader = (label, field) => {
+    const isSelected = sortBy === field;
+    return (
+      <button
+        type="button"
+        onClick={() => handleSort(field)}
+        className={`group flex items-center gap-1 font-semibold text-[11px] tracking-wider uppercase transition-colors cursor-pointer select-none border-0 bg-transparent p-0 ${
+          isSelected ? 'text-ink' : 'text-fainter hover:text-ink'
+        }`}
+      >
+        <span>{label}</span>
+        <span
+          className={`text-[9px] transition-all duration-200 ${
+            isSelected
+              ? 'text-accent opacity-100 font-bold'
+              : 'text-fainter opacity-0 group-hover:opacity-50'
+          }`}
+        >
+          {isSelected ? (sortOrder === 'asc' ? '↑' : '↓') : '↑'}
+        </span>
+      </button>
+    );
+  };
 
   async function handleToggle(gid, completed) {
     const prev = tasks.find((t) => t.gid === gid)?.completed;
@@ -267,6 +327,7 @@ export default function App() {
       setTasks((ts) => [
         {
           ...created,
+          created_at: created.created_at || new Date().toISOString(),
           projects: targetProject ? [targetProject] : [],
           assignee: assigneeGid ? people.find((p) => p.gid === assigneeGid) : null,
         },
@@ -305,13 +366,35 @@ export default function App() {
 
   const filterGroups = (
     <>
-      <FilterGroup
-        label="Show"
-        options={STATUS_OPTIONS}
-        value={status}
-        variant="status"
-        onSelect={setStatus}
-      />
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3.5 md:gap-2">
+        <FilterGroup
+          label="Show"
+          options={STATUS_OPTIONS}
+          value={status}
+          variant="status"
+          onSelect={setStatus}
+        />
+        <div className="hidden md:flex items-center gap-2">
+          <span className="font-semibold text-[11px] tracking-wider uppercase text-fainter">
+            Sort
+          </span>
+          <select
+            value={sortBy}
+            onChange={(e) => {
+              const newSortBy = e.target.value;
+              setSortBy(newSortBy);
+              setSortOrder(newSortBy === 'created' ? 'desc' : 'asc');
+            }}
+            className="appearance-none border-[1.5px] border-border bg-white rounded-full pl-3.5 pr-7 py-2 font-semibold text-[13px] text-ink cursor-pointer"
+          >
+            <option value="created">Newest</option>
+            <option value="due">Due date</option>
+            <option value="project">Project</option>
+            <option value="name">Name</option>
+            <option value="assignee">Who</option>
+          </select>
+        </div>
+      </div>
       <MultiFilterGroup
         label="Project"
         options={projects.map((p) => p.name)}
@@ -337,7 +420,7 @@ export default function App() {
         <div className="sticky top-0 z-[5] bg-panel-alt border-b border-border px-4 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] md:px-6 md:py-5.5 flex flex-col gap-3.5">
           <div className="flex items-baseline justify-between gap-3">
             <h1 className="m-0 font-bold text-[17px] md:text-[22px] text-ink tracking-tight">
-              KISS Tasks
+              Inner Excellence and Associated Task Management
             </h1>
             <div className="flex items-center gap-4">
               <span className="hidden md:inline font-semibold text-[13px] text-faint">
@@ -374,7 +457,7 @@ export default function App() {
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex md:hidden items-center gap-2">
             <button
               type="button"
               onClick={() => setFiltersOpen((o) => !o)}
@@ -417,13 +500,18 @@ export default function App() {
               </span>
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) => {
+                  const newSortBy = e.target.value;
+                  setSortBy(newSortBy);
+                  setSortOrder(newSortBy === 'created' ? 'desc' : 'asc');
+                }}
                 className="appearance-none border-[1.5px] border-border bg-white rounded-full pl-3.5 pr-7 py-2 font-semibold text-[13px] text-ink cursor-pointer"
               >
                 <option value="created">Newest</option>
                 <option value="due">Due date</option>
                 <option value="project">Project</option>
                 <option value="name">Name</option>
+                <option value="assignee">Who</option>
               </select>
             </div>
           </div>
@@ -433,12 +521,13 @@ export default function App() {
           </div>
         </div>
 
-        <div className="hidden md:grid grid-cols-[22px_minmax(0,1fr)_96px_210px_150px] items-center gap-x-4 px-6 pt-2.5 pb-2 border-b border-border-soft font-semibold text-[11px] tracking-wider uppercase text-fainter">
+        <div className="hidden md:grid grid-cols-[22px_minmax(0,1fr)_96px_96px_210px_150px] items-center gap-x-4 px-6 pt-2.5 pb-2 border-b border-border-soft font-semibold text-[11px] tracking-wider uppercase text-fainter">
           <span />
-          <span>Task</span>
-          <span>Due</span>
-          <span>Project</span>
-          <span>Who</span>
+          {renderHeader('Task', 'name')}
+          {renderHeader('Created', 'created')}
+          {renderHeader('Due', 'due')}
+          {renderHeader('Project', 'project')}
+          {renderHeader('Who', 'assignee')}
         </div>
 
         <div className="flex-1 overflow-auto px-4 md:px-6 py-1.5">

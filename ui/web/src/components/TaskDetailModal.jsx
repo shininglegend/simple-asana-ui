@@ -82,6 +82,14 @@ export default function TaskDetailModal({
       </div>
       <div className="flex flex-col gap-1">
         <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
+          Created
+        </span>
+        <span className="font-semibold text-sm text-ink">
+          {formatDateLong(task.created_at ? task.created_at.split('T')[0] : null)}
+        </span>
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
           Project
         </span>
         <span className="flex items-center gap-1.5">

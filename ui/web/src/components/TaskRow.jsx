@@ -66,6 +66,9 @@ export default function TaskRow({ task, projectColor, onToggle, onOpen, isMobile
             >
               {assigneeName ?? 'Unassigned'}
             </span>
+            <span className="font-medium text-xs text-muted">
+              Created {formatDateShort(task.created_at ? task.created_at.split('T')[0] : null)}
+            </span>
           </div>
         </div>
       </div>
@@ -75,7 +78,7 @@ export default function TaskRow({ task, projectColor, onToggle, onOpen, isMobile
   return (
     <div
       onClick={() => onOpen(task.gid)}
-      className="grid grid-cols-[22px_minmax(0,1fr)_96px_210px_150px] items-center gap-x-4 py-2.5 cursor-pointer hover:bg-[#faf8f4] transition-colors"
+      className="grid grid-cols-[22px_minmax(0,1fr)_96px_96px_210px_150px] items-center gap-x-4 py-2.5 cursor-pointer hover:bg-[#faf8f4] transition-colors"
     >
       <Checkbox done={done} onToggle={() => onToggle(task.gid, !done)} />
 
@@ -85,6 +88,10 @@ export default function TaskRow({ task, projectColor, onToggle, onOpen, isMobile
         }`}
       >
         {task.name}
+      </span>
+
+      <span className="font-medium text-xs text-muted">
+        {formatDateShort(task.created_at ? task.created_at.split('T')[0] : null)}
       </span>
 
       <span
