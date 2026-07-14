@@ -159,7 +159,7 @@ export default function App() {
         if (!wsGid) throw new Error('No workspace found for this user.');
         setWorkspaceGid(wsGid);
         const [projectList, userList] = await Promise.all([
-          getProjects(wsGid),
+          getProjects(wsGid, me.gid),
           getWorkspaceUsers(wsGid),
         ]);
         setProjects(projectList);

@@ -23,8 +23,11 @@ export function getMe() {
   return apiFetch('users/me?opt_fields=name,gid,workspaces.gid,workspaces.name');
 }
 
-export function getProjects(workspaceGid) {
-  return apiFetch(`projects?workspace=${workspaceGid}&opt_fields=name,gid&archived=false`);
+export async function getProjects(workspaceGid, userGid) {
+  const allProjects = await apiFetch(
+    `projects?workspace=${workspaceGid}&opt_fields=name,gid,members.gid&archived=false`,
+  );
+  return allProjects.filter((p) => p.members?.some((m) => m.gid === userGid));
 }
 
 export function getWorkspaceUsers(workspaceGid) {
