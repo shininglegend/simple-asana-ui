@@ -3,6 +3,7 @@ import FilterGroup from './components/FilterGroup.jsx';
 import TaskRow from './components/TaskRow.jsx';
 import TaskDetailModal from './components/TaskDetailModal.jsx';
 import { assignProjectColors } from './lib/colors.js';
+import { useIsMobile } from './lib/useIsMobile.js';
 import {
   getMe,
   getProjects,
@@ -30,6 +31,9 @@ export default function App() {
   const [sortBy, setSortBy] = useState('due');
   const [newTitle, setNewTitle] = useState('');
   const [selectedId, setSelectedId] = useState(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     (async () => {
@@ -146,15 +150,47 @@ export default function App() {
     );
   }
 
+  const activeFilterCount =
+    (status !== 'Incomplete' ? 1 : 0) + (project !== 'All' ? 1 : 0) + (person !== 'Anyone' ? 1 : 0);
+  const countLabel = `${filtered.length} ${filtered.length === 1 ? 'task' : 'tasks'}`;
+
+  const filterGroups = (
+    <>
+      <FilterGroup
+        label="Show"
+        options={STATUS_OPTIONS}
+        value={status}
+        variant="status"
+        onSelect={setStatus}
+      />
+      <FilterGroup
+        label="Project"
+        options={['All', ...projects.map((p) => p.name)]}
+        value={project}
+        variant="soft"
+        onSelect={setProject}
+      />
+      <FilterGroup
+        label="Who"
+        options={['Anyone', ...people.map((p) => p.name), 'Unassigned']}
+        value={person}
+        variant="soft"
+        onSelect={setPerson}
+      />
+    </>
+  );
+
   return (
-    <div className="min-h-screen bg-app-bg py-10 px-5">
-      <div className="max-w-[700px] mx-auto bg-white border border-border rounded-2xl shadow-[0_4px_24px_rgba(60,50,35,0.06)] overflow-hidden">
-        <div className="sticky top-0 z-[5] bg-panel-alt border-b border-border px-6.5 py-5.5 flex flex-col gap-3.5">
+    <div className="min-h-screen bg-app-bg md:py-10 md:px-5">
+      <div className="min-h-screen md:min-h-0 flex flex-col max-w-[700px] mx-auto bg-white md:border md:border-border md:rounded-2xl md:shadow-[0_4px_24px_rgba(60,50,35,0.06)] md:overflow-hidden">
+        <div className="sticky top-0 z-[5] bg-panel-alt border-b border-border px-4 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] md:px-6.5 md:py-5.5 flex flex-col gap-3.5">
           <div className="flex items-baseline justify-between gap-3">
-            <h1 className="m-0 font-bold text-[22px] text-ink tracking-tight">Jim&rsquo;s Tasks</h1>
+            <h1 className="m-0 font-bold text-[17px] md:text-[22px] text-ink tracking-tight">
+              Jim&rsquo;s Tasks
+            </h1>
             <div className="flex items-center gap-4">
-              <span className="font-semibold text-[13px] text-faint">
-                {filtered.length} {filtered.length === 1 ? 'task' : 'tasks'}
+              <span className="hidden md:inline font-semibold text-[13px] text-faint">
+                {countLabel}
               </span>
               <a
                 href="/auth/logout"
@@ -164,29 +200,67 @@ export default function App() {
               </a>
             </div>
           </div>
-          <div className="flex items-center gap-2.5">
-            <div className="flex-1 min-w-0 flex items-center gap-2 bg-white border-[1.5px] border-border rounded-[10px] px-3.5 py-2">
+
+          <div className="flex items-center gap-2 bg-white border-[1.5px] border-border rounded-[10px] px-3.5 py-2">
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#a8a196"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <line x1="21" y1="21" x2="16.5" y2="16.5" />
+            </svg>
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search tasks…"
+              className="flex-1 min-w-0 border-0 outline-none bg-transparent font-medium text-sm text-ink"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((o) => !o)}
+              className={`md:hidden flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold text-[13px] border-[1.5px] transition-colors ${
+                filtersOpen || activeFilterCount
+                  ? 'bg-[#faf0eb] border-accent text-accent'
+                  : 'bg-white border-border text-ink-soft'
+              }`}
+            >
               <svg
-                width="15"
-                height="15"
+                width="14"
+                height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#a8a196"
-                strokeWidth="2.4"
+                stroke="currentColor"
+                strokeWidth="2.2"
                 strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <circle cx="11" cy="11" r="7" />
-                <line x1="21" y1="21" x2="16.5" y2="16.5" />
+                <line x1="4" y1="6" x2="20" y2="6" />
+                <line x1="7" y1="12" x2="17" y2="12" />
+                <line x1="10" y1="18" x2="14" y2="18" />
               </svg>
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search tasks…"
-                className="flex-1 min-w-0 border-0 outline-none bg-transparent font-medium text-sm text-ink"
-              />
-            </div>
-            <div className="flex-none flex items-center gap-2">
+              <span>Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="min-w-4 h-4 px-1 box-border rounded-lg bg-accent text-white font-bold text-[10px] leading-4 text-center">
+                  {activeFilterCount}
+                </span>
+              )}
+              <span
+                className="text-[13px] leading-none transition-transform"
+                style={{ transform: filtersOpen ? 'rotate(180deg)' : 'none' }}
+              >
+                ⌄
+              </span>
+            </button>
+            <div className="ml-auto flex items-center gap-2">
               <span className="font-semibold text-[11px] tracking-wider uppercase text-fainter">
                 Sort
               </span>
@@ -201,30 +275,13 @@ export default function App() {
               </select>
             </div>
           </div>
-          <FilterGroup
-            label="Show"
-            options={STATUS_OPTIONS}
-            value={status}
-            variant="status"
-            onSelect={setStatus}
-          />
-          <FilterGroup
-            label="Project"
-            options={['All', ...projects.map((p) => p.name)]}
-            value={project}
-            variant="soft"
-            onSelect={setProject}
-          />
-          <FilterGroup
-            label="Who"
-            options={['Anyone', ...people.map((p) => p.name), 'Unassigned']}
-            value={person}
-            variant="soft"
-            onSelect={setPerson}
-          />
+
+          <div className={`${filtersOpen ? 'flex' : 'hidden'} md:flex flex-col gap-3.5`}>
+            {filterGroups}
+          </div>
         </div>
 
-        <div className="flex items-center gap-3.5 px-8 pt-2.5 pb-2 border-b border-border-soft">
+        <div className="hidden md:flex items-center gap-3.5 px-8 pt-2.5 pb-2 border-b border-border-soft">
           <span className="w-[22px] flex-none" />
           <span className="flex-1 min-w-0 font-semibold text-[11px] tracking-wider uppercase text-fainter">
             Task
@@ -240,7 +297,10 @@ export default function App() {
           </span>
         </div>
 
-        <div className="px-6.5 py-1.5">
+        <div className="flex-1 overflow-auto px-4 md:px-6.5 py-1.5">
+          <div className="md:hidden pt-2.5 pb-1 px-0.5 font-semibold text-[11px] tracking-wider uppercase text-fainter">
+            {countLabel}
+          </div>
           {filtered.map((t) => (
             <div key={t.gid} className="border-b border-border-soft">
               <TaskRow
@@ -248,6 +308,7 @@ export default function App() {
                 projectColor={projectColors.get(t.projects?.[0]?.gid)}
                 onToggle={handleToggle}
                 onOpen={setSelectedId}
+                isMobile={isMobile}
               />
             </div>
           ))}
@@ -256,20 +317,36 @@ export default function App() {
               Nothing here with these filters.
             </div>
           )}
-        </div>
 
-        <div className="flex items-center gap-3.5 px-8 pt-3.5 pb-5">
-          <span className="w-[22px] h-[22px] flex-none rounded-lg border-2 border-dashed border-[#d7d0c5] flex items-center justify-center text-[#bcb5a9] text-base leading-none">
-            +
-          </span>
-          <input
-            type="text"
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-            placeholder="Add a task…"
-            className="flex-1 border-0 outline-none bg-transparent font-medium text-[15px] text-ink"
-          />
+          {isMobile ? (
+            <div className="flex items-center gap-[11px] my-3 px-3.5 py-3 bg-white border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)]">
+              <span className="w-[26px] h-[26px] flex-none rounded-full bg-accent flex items-center justify-center text-white text-lg font-semibold leading-none">
+                +
+              </span>
+              <input
+                type="text"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+                placeholder="Add a task…"
+                className="flex-1 min-w-0 border-0 outline-none bg-transparent font-semibold text-[15px] text-ink"
+              />
+            </div>
+          ) : (
+            <div className="flex items-center gap-3.5 px-1.5 pt-3.5 pb-5">
+              <span className="w-[22px] h-[22px] flex-none rounded-lg border-2 border-dashed border-[#d7d0c5] flex items-center justify-center text-[#bcb5a9] text-base leading-none">
+                +
+              </span>
+              <input
+                type="text"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+                placeholder="Add a task…"
+                className="flex-1 border-0 outline-none bg-transparent font-medium text-[15px] text-ink"
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -280,6 +357,7 @@ export default function App() {
           onClose={() => setSelectedId(null)}
           onToggle={handleToggle}
           onNotesChange={handleNotesChange}
+          isMobile={isMobile}
         />
       )}
     </div>
