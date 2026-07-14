@@ -341,7 +341,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center text-muted">
+      <div className="min-h-screen bg-panel flex items-center justify-center text-muted">
         Loading your tasks…
       </div>
     );
@@ -349,7 +349,7 @@ export default function App() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-3 text-ink px-5 text-center">
+      <div className="min-h-screen bg-panel flex flex-col items-center justify-center gap-3 text-ink px-5 text-center">
         <p>{error}</p>
         <a href="/auth/login" className="font-semibold">
           Try logging in again
@@ -385,7 +385,7 @@ export default function App() {
               setSortBy(newSortBy);
               setSortOrder(newSortBy === 'created' ? 'desc' : 'asc');
             }}
-            className="appearance-none border-[1.5px] border-border bg-white rounded-full pl-3.5 pr-7 py-2 font-semibold text-[13px] text-ink cursor-pointer"
+            className="appearance-none border-[1.5px] border-border bg-panel rounded-full pl-3.5 pr-7 py-2 font-semibold text-[13px] text-ink cursor-pointer"
           >
             <option value="created">Newest</option>
             <option value="due">Due date</option>
@@ -415,8 +415,8 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="min-h-screen flex flex-col md:max-w-6xl md:mx-auto bg-white">
+    <div className="min-h-screen bg-panel">
+      <div className="min-h-screen flex flex-col md:max-w-6xl md:mx-auto bg-panel">
         <div className="sticky top-0 z-[5] bg-panel-alt border-b border-border px-4 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] md:px-6 md:py-5.5 flex flex-col gap-3.5">
           <div className="flex items-baseline justify-between gap-3">
             <h1 className="m-0 font-bold text-[17px] md:text-[22px] text-ink tracking-tight">
@@ -435,7 +435,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-white border-[1.5px] border-border rounded-[10px] px-3.5 py-2">
+          <div className="flex items-center gap-2 bg-panel border-[1.5px] border-border rounded-[10px] px-3.5 py-2">
             <svg
               width="15"
               height="15"
@@ -463,8 +463,8 @@ export default function App() {
               onClick={() => setFiltersOpen((o) => !o)}
               className={`md:hidden flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold text-[13px] border-[1.5px] transition-colors ${
                 filtersOpen || activeFilterCount
-                  ? 'bg-[#faf0eb] border-accent text-accent'
-                  : 'bg-white border-border text-ink-soft'
+                  ? 'bg-highlight border-accent text-accent'
+                  : 'bg-panel border-border text-ink-soft'
               }`}
             >
               <svg
@@ -505,7 +505,7 @@ export default function App() {
                   setSortBy(newSortBy);
                   setSortOrder(newSortBy === 'created' ? 'desc' : 'asc');
                 }}
-                className="appearance-none border-[1.5px] border-border bg-white rounded-full pl-3.5 pr-7 py-2 font-semibold text-[13px] text-ink cursor-pointer"
+                className="appearance-none border-[1.5px] border-border bg-panel rounded-full pl-3.5 pr-7 py-2 font-semibold text-[13px] text-ink cursor-pointer"
               >
                 <option value="created">Newest</option>
                 <option value="due">Due date</option>
@@ -552,7 +552,7 @@ export default function App() {
           )}
 
           {isMobile ? (
-            <div className="flex items-center gap-[11px] my-3 px-3.5 py-3 bg-white border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)]">
+            <div className="flex items-center gap-[11px] my-3 px-3.5 py-3 bg-panel border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)]">
               <span className="w-[26px] h-[26px] flex-none rounded-full bg-accent flex items-center justify-center text-white text-lg font-semibold leading-none">
                 +
               </span>

@@ -1,25 +1,42 @@
 @import 'tailwindcss';
 
+:root {
+  /* Primary palette — global custom properties */
+  --primary-bg: #F7F5F1;
+  --secondary-bg: #EAE5DE;
+  --card-bg: #FCFBF9;
+  --primary-text: #262626;
+  --secondary-text: #6B6762;
+  --primary-accent: #5E7388;
+  --secondary-accent: #8DA6BB;
+  --cta-button: #48637B;
+  --cta-hover: #354E66;
+  --border-color: #D7D1C8;
+  --success: #7F9385;
+  --highlight: #D7E3EC;
+}
+
 @theme {
   --font-sans: 'Instrument Sans', system-ui, sans-serif;
 
-  --color-panel: #fff;
-  --color-panel-alt: #fbf9f5;
-  --color-border: #e7e1d7;
-  --color-border-soft: #f0ebe2;
-  --color-ink: #2b2926;
-  --color-ink-soft: #5a554d;
-  --color-muted: #8a857c;
-  --color-faint: #a8a196;
-  --color-fainter: #b3ada3;
-  --color-placeholder: #c2bcb2;
-  --color-accent: #c15f3c;
-  --color-accent-hover: #a94e30;
+  --color-panel: #F7F5F1;
+  --color-panel-alt: #EAE5DE;
+  --color-border: #D7D1C8;
+  --color-border-soft: #EAE5DE;
+  --color-ink: #262626;
+  --color-ink-soft: #6B6762;
+  --color-muted: #6B6762;
+  --color-faint: #8DA6BB;
+  --color-fainter: #D7D1C8;
+  --color-placeholder: #D7D1C8;
+  --color-accent: #48637B;
+  --color-accent-hover: #354E66;
   --color-danger: #c0402f;
+  --color-highlight: #D7E3EC;
 
-  --color-project-website: #c15f3c;
-  --color-project-ops: #4f7a6a;
-  --color-project-marketing: #6a5aa0;
+  --color-project-website: #48637B;
+  --color-project-ops: #7F9385;
+  --color-project-marketing: #5E7388;
 }
 
 body {
@@ -39,6 +56,6 @@ a:hover {
   width: 10px;
 }
 *::-webkit-scrollbar-thumb {
-  background: #ddd6cc;
+  background: #D7D1C8;
   border-radius: 8px;
 }

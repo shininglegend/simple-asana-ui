@@ -13,7 +13,7 @@ function Checkbox({ done, onToggle, size = 22 }) {
       className={`flex-none rounded-[7px] border-2 flex items-center justify-center cursor-pointer transition-all ${
         done
           ? 'bg-accent border-accent hover:bg-accent-hover hover:border-accent-hover'
-          : 'bg-white border-[#cfc8bd] hover:bg-[#f3efe8] hover:border-[#9c968b]'
+          : 'bg-panel border-border hover:bg-panel-alt hover:border-muted'
       }`}
     >
       {done && (

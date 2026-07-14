@@ -158,13 +158,13 @@ export default function TaskDetailModal({
       onChange={(e) => setNewComment(e.target.value)}
       onKeyDown={submitComment}
       placeholder="Write a comment…"
-      className="flex-1 min-w-0 border border-border rounded-full px-3.5 py-2.5 text-sm text-ink outline-none bg-white"
+      className="flex-1 min-w-0 border border-border rounded-full px-3.5 py-2.5 text-sm text-ink outline-none bg-panel"
     />
   );
 
   if (isMobile) {
     return (
-      <div className="fixed inset-0 z-50 bg-white flex flex-col">
+      <div className="fixed inset-0 z-50 bg-panel flex flex-col">
         <div className="flex-none bg-panel-alt border-b border-border px-3 pb-3.5 pt-[calc(env(safe-area-inset-top)+14px)] flex items-center gap-2">
           <button
             type="button"
@@ -181,7 +181,7 @@ export default function TaskDetailModal({
               aria-label="toggle complete"
               onClick={() => onToggle(task.gid, !done)}
               className={`w-[26px] h-[26px] flex-none mt-0.5 rounded-lg border-2 flex items-center justify-center cursor-pointer ${
-                done ? 'bg-accent border-accent' : 'bg-white border-[#cfc8bd]'
+                done ? 'bg-accent border-accent' : 'bg-panel border-border'
               }`}
             >
               {done && (
@@ -225,7 +225,7 @@ export default function TaskDetailModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[560px] bg-white rounded-2xl shadow-[0_24px_60px_rgba(40,32,20,0.28)] overflow-hidden"
+        className="w-full max-w-[560px] bg-panel rounded-2xl shadow-[0_24px_60px_rgba(40,32,20,0.28)] overflow-hidden"
       >
         <div className="flex items-start gap-3.5 px-6.5 pt-6 pb-4.5 border-b border-border-soft">
           <button
@@ -233,7 +233,7 @@ export default function TaskDetailModal({
             aria-label="toggle complete"
             onClick={() => onToggle(task.gid, !done)}
             className={`w-[26px] h-[26px] flex-none mt-0.5 rounded-lg border-2 flex items-center justify-center cursor-pointer ${
-              done ? 'bg-accent border-accent' : 'bg-white border-[#cfc8bd]'
+              done ? 'bg-accent border-accent' : 'bg-panel border-border'
             }`}
           >
             {done && (
