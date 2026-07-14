@@ -15,6 +15,9 @@ import {
   setTaskDueDate,
   setTaskAssignee,
   createTask,
+  getMyTasks,
+  addTaskProject,
+  removeTaskProject,
 } from './lib/api.js';
 
 const STATUS_OPTIONS = ['Incomplete', 'Complete', 'All'];
@@ -161,13 +164,19 @@ export default function App() {
         if (!wsGid) throw new Error('No workspace found for this user.');
         setWorkspaceGid(wsGid);
         const [projectList, userList] = await Promise.all([
-          getProjects(wsGid, me.gid),
+          getProjects(wsGid),
           getWorkspaceUsers(wsGid),
         ]);
         setProjects(projectList);
         setPeople(userList);
-        const taskList = await getTasksForProjects(projectList.map((p) => p.gid));
-        setTasks(taskList);
+        const [projectTasks, myTasks] = await Promise.all([
+          getTasksForProjects(projectList.map((p) => p.gid)),
+          getMyTasks(wsGid, me.gid),
+        ]);
+        const byGid = new Map();
+        projectTasks.forEach((t) => byGid.set(t.gid, t));
+        myTasks.forEach((t) => byGid.set(t.gid, t));
+        setTasks(Array.from(byGid.values()));
       } catch (e) {
         setError(e.message);
       } finally {
@@ -329,7 +338,45 @@ export default function App() {
     }
   }
 
+  async function handleAddProject(taskGid, projectGid) {
+    const task = tasks.find((t) => t.gid === taskGid);
+    if (!task) return;
+    const project = projects.find((p) => p.gid === projectGid);
+    if (!project) return;
+    const prevProjects = task.projects ?? [];
+    if (prevProjects.some((p) => p.gid === projectGid)) return;
+
+    const newProjects = [...prevProjects, project];
+    updateTaskLocal(taskGid, { projects: newProjects });
+    try {
+      await addTaskProject(taskGid, projectGid);
+    } catch {
+      updateTaskLocal(taskGid, { projects: prevProjects });
+      setWriteError("Couldn't add the project to the task in Asana.");
+    }
+  }
+
+  async function handleRemoveProject(taskGid, projectGid) {
+    const task = tasks.find((t) => t.gid === taskGid);
+    if (!task) return;
+    const prevProjects = task.projects ?? [];
+    if (prevProjects.length <= 1) return;
+
+    const newProjects = prevProjects.filter((p) => p.gid !== projectGid);
+    updateTaskLocal(taskGid, { projects: newProjects });
+    try {
+      await removeTaskProject(taskGid, projectGid);
+    } catch {
+      updateTaskLocal(taskGid, { projects: prevProjects });
+      setWriteError("Couldn't remove the project from the task in Asana.");
+    }
+  }
+
   async function handleAddTask() {
+    if (projects.length === 0) {
+      setWriteError('Cannot create a task because there are no projects in the workspace.');
+      return;
+    }
     const title = newTitle.trim();
     if (!title || !workspaceGid) return;
     setNewTitle('');
@@ -387,7 +434,7 @@ export default function App() {
     (status !== 'Incomplete' ? 1 : 0) +
     (selectedProjects !== null ? 1 : 0) +
     (selectedPeople !== null ? 1 : 0);
-  const countLabel = `${filtered.length} ${filtered.length === 1 ? 'task' : 'tasks'}`;
+  const countLabel = `${filtered.length} ${filtered.length === 1 ? 'task' : 'tasks'} in this view`;
 
   const filterGroups = (
     <>
@@ -440,108 +487,123 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen bg-panel">
-      <div className="sticky top-0 z-[5] bg-panel-alt border-b border-border px-4 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] md:px-6 md:py-5.5 flex flex-col gap-3.5">
-        <div className="flex items-baseline justify-between gap-3">
-          <h1 className="m-0 font-bold text-[17px] md:text-[22px] text-ink tracking-tight">
-            Tasks
-          </h1>
-          <div className="flex items-center gap-4">
-            <span className="hidden md:inline font-semibold text-[13px] text-faint">
-              {countLabel}
-            </span>
-            <a href="/auth/logout" className="font-semibold text-[13px] text-muted hover:text-ink">
-              Log out
-            </a>
+    <div className="min-h-screen bg-panel py-6 px-4 md:px-8">
+      <div className="max-w-6xl mx-auto flex flex-col gap-6">
+        {/* Card A: Top Bar */}
+        <div className="bg-white rounded-xl shadow-xs border border-border-soft p-4 md:p-6 flex flex-col gap-4">
+          <div className="flex items-baseline justify-between gap-3">
+            <h1 className="m-0 font-bold text-[17px] md:text-[22px] text-ink tracking-tight">
+              Inner Excellence Tasks
+            </h1>
+            <div className="flex items-center gap-4">
+              <span className="hidden md:inline font-semibold text-[13px] text-faint">
+                {countLabel}
+              </span>
+              <a
+                href="/auth/logout"
+                className="font-semibold text-[13px] text-muted hover:text-ink"
+              >
+                Log out
+              </a>
+            </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2 bg-panel border-[1.5px] border-border rounded-[10px] px-3.5 py-2">
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#a8a196"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-          >
-            <circle cx="11" cy="11" r="7" />
-            <line x1="21" y1="21" x2="16.5" y2="16.5" />
-          </svg>
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search tasks…"
-            className="flex-1 min-w-0 border-0 outline-none bg-transparent font-medium text-sm text-ink"
-          />
-        </div>
-
-        <div className="flex md:hidden items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setFiltersOpen((o) => !o)}
-            className={`md:hidden flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold text-[13px] border-[1.5px] transition-colors ${
-              filtersOpen || activeFilterCount
-                ? 'bg-highlight border-accent text-accent'
-                : 'bg-panel border-border text-ink-soft'
-            }`}
-          >
+          <div className="flex items-center gap-2 bg-panel border-[1.5px] border-border rounded-[10px] px-3.5 py-2">
             <svg
-              width="14"
-              height="14"
+              width="15"
+              height="15"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
+              stroke="#a8a196"
+              strokeWidth="2.4"
               strokeLinecap="round"
-              strokeLinejoin="round"
             >
-              <line x1="4" y1="6" x2="20" y2="6" />
-              <line x1="7" y1="12" x2="17" y2="12" />
-              <line x1="10" y1="18" x2="14" y2="18" />
+              <circle cx="11" cy="11" r="7" />
+              <line x1="21" y1="21" x2="16.5" y2="16.5" />
             </svg>
-            <span>Filters</span>
-            {activeFilterCount > 0 && (
-              <span className="min-w-4 h-4 px-1 box-border rounded-lg bg-accent text-white font-bold text-[10px] leading-4 text-center">
-                {activeFilterCount}
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search tasks…"
+              className="flex-1 min-w-0 border-0 outline-none bg-transparent font-medium text-sm text-ink"
+            />
+          </div>
+
+          {/* Mobile Filter Toggle & Sort Row */}
+          <div className="flex md:hidden items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((o) => !o)}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold text-[13px] border-[1.5px] transition-colors ${
+                filtersOpen || activeFilterCount
+                  ? 'bg-highlight border-accent text-accent'
+                  : 'bg-panel border-border text-ink-soft'
+              }`}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="4" y1="6" x2="20" y2="6" />
+                <line x1="7" y1="12" x2="17" y2="12" />
+                <line x1="10" y1="18" x2="14" y2="18" />
+              </svg>
+              <span>Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="min-w-4 h-4 px-1 box-border rounded-lg bg-accent text-white font-bold text-[10px] leading-4 text-center">
+                  {activeFilterCount}
+                </span>
+              )}
+              <span
+                className="text-[13px] leading-none transition-transform"
+                style={{ transform: filtersOpen ? 'rotate(180deg)' : 'none' }}
+              >
+                ⌄
               </span>
-            )}
-            <span
-              className="text-[13px] leading-none transition-transform"
-              style={{ transform: filtersOpen ? 'rotate(180deg)' : 'none' }}
-            >
-              ⌄
-            </span>
-          </button>
-          <div className="ml-auto flex items-center gap-2">
-            <span className="font-semibold text-[11px] tracking-wider uppercase text-fainter">
-              Sort
-            </span>
-            <select
-              value={sortBy}
-              onChange={(e) => {
-                const newSortBy = e.target.value;
-                setSortBy(newSortBy);
-                setSortOrder(newSortBy === 'created' ? 'desc' : 'asc');
-              }}
-              className="appearance-none border-[1.5px] border-border bg-panel rounded-full pl-3.5 pr-7 py-2 font-semibold text-[13px] text-ink cursor-pointer"
-            >
-              <option value="created">Newest</option>
-              <option value="due">Due date</option>
-              <option value="project">Project</option>
-              <option value="name">Name</option>
-              <option value="assignee">Who</option>
-            </select>
+            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <span className="font-semibold text-[11px] tracking-wider uppercase text-fainter">
+                Sort
+              </span>
+              <select
+                value={sortBy}
+                onChange={(e) => {
+                  const newSortBy = e.target.value;
+                  setSortBy(newSortBy);
+                  setSortOrder(newSortBy === 'created' ? 'desc' : 'asc');
+                }}
+                className="appearance-none border-[1.5px] border-border bg-panel rounded-full pl-3.5 pr-7 py-2 font-semibold text-[13px] text-ink cursor-pointer"
+              >
+                <option value="created">Newest</option>
+                <option value="due">Due date</option>
+                <option value="project">Project</option>
+                <option value="name">Name</option>
+                <option value="assignee">Who</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <div className={`${filtersOpen ? 'flex' : 'hidden'} md:flex flex-col gap-3.5`}>
+        {/* Card B: Filters Panel */}
+        <div
+          className={`${
+            filtersOpen ? 'flex' : 'hidden'
+          } md:flex flex-col gap-4 bg-white rounded-xl shadow-xs border border-border-soft p-4 md:p-6`}
+        >
           {filterGroups}
         </div>
-        <div className="md:max-w-6xl md:mx-auto bg-panel">
-          <div className="hidden md:grid grid-cols-[22px_minmax(0,1fr)_96px_96px_210px_150px] items-center gap-x-4 px-6 pt-2.5 pb-2 border-b border-border-soft font-semibold text-[11px] tracking-wider uppercase text-fainter">
+
+        {/* Card C: Task List */}
+        <div className="bg-white rounded-xl shadow-xs border border-border-soft overflow-hidden">
+          {/* Desktop Table Headers */}
+          <div className="hidden md:grid grid-cols-[22px_minmax(0,1fr)_96px_96px_210px_150px] items-center gap-x-4 px-6 pt-4 pb-3 border-b border-border-soft font-semibold text-[11px] tracking-wider uppercase text-fainter bg-slate-50/10">
             <span />
             {renderHeader('Task', 'name')}
             {renderHeader('Created', 'created')}
@@ -554,11 +616,14 @@ export default function App() {
             <div className="md:hidden pt-2.5 pb-1 px-0.5 font-semibold text-[11px] tracking-wider uppercase text-fainter">
               {countLabel}
             </div>
-            {filtered.map((t) => (
-              <div key={t.gid} className="border-b border-border-soft">
+            {filtered.map((t, idx) => (
+              <div
+                key={t.gid}
+                className={`border-b border-border-soft ${idx === filtered.length - 1 ? 'border-b-0' : ''}`}
+              >
                 <TaskRow
                   task={t}
-                  projectColor={projectColors.get(t.projects?.[0]?.gid)}
+                  projectColors={projectColors}
                   onToggle={handleToggle}
                   onOpen={setSelectedId}
                   isMobile={isMobile}
@@ -586,7 +651,7 @@ export default function App() {
                 />
               </div>
             ) : (
-              <div className="flex items-center gap-4 pt-3.5 pb-5">
+              <div className="flex items-center gap-4 pt-3.5 pb-4">
                 <span className="w-[22px] h-[22px] flex-none rounded-lg border-2 border-dashed border-[#d7d0c5] flex items-center justify-center text-[#bcb5a9] text-base leading-none">
                   +
                 </span>
@@ -602,27 +667,30 @@ export default function App() {
             )}
           </div>
         </div>
-
-        {writeError && (
-          <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+20px)] left-1/2 -translate-x-1/2 z-[60] max-w-[90vw] bg-ink text-white font-medium text-[13px] px-4 py-2.5 rounded-full shadow-[0_8px_24px_rgba(40,32,20,0.3)] whitespace-nowrap overflow-hidden text-ellipsis">
-            {writeError}
-          </div>
-        )}
-
-        {selected && (
-          <TaskDetailModal
-            task={selected}
-            projectColor={projectColors.get(selected.projects?.[0]?.gid)}
-            onClose={() => setSelectedId(null)}
-            onToggle={handleToggle}
-            onNotesChange={handleNotesChange}
-            onDueChange={handleDueChange}
-            onAssigneeChange={handleAssigneeChange}
-            people={people}
-            isMobile={isMobile}
-          />
-        )}
       </div>
+
+      {writeError && (
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+20px)] left-1/2 -translate-x-1/2 z-[60] max-w-[90vw] bg-ink text-white font-medium text-[13px] px-4 py-2.5 rounded-full shadow-[0_8px_24px_rgba(40,32,20,0.3)] whitespace-nowrap overflow-hidden text-ellipsis">
+          {writeError}
+        </div>
+      )}
+
+      {selected && (
+        <TaskDetailModal
+          task={selected}
+          projectColors={projectColors}
+          projects={projects}
+          onAddProject={handleAddProject}
+          onRemoveProject={handleRemoveProject}
+          onClose={() => setSelectedId(null)}
+          onToggle={handleToggle}
+          onNotesChange={handleNotesChange}
+          onDueChange={handleDueChange}
+          onAssigneeChange={handleAssigneeChange}
+          people={people}
+          isMobile={isMobile}
+        />
+      )}
     </div>
   );
 }

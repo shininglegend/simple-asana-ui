@@ -5,7 +5,10 @@ import { getStories, addComment } from '../lib/api.js';
 
 export default function TaskDetailModal({
   task,
-  projectColor,
+  projectColors,
+  projects = [],
+  onAddProject,
+  onRemoveProject,
   onClose,
   onToggle,
   onNotesChange,
@@ -56,7 +59,7 @@ export default function TaskDetailModal({
 
   const done = !!task.completed;
   const overdue = isOverdue(dueDate, done);
-  const projectName = task.projects?.[0]?.name ?? '';
+  const availableProjects = projects.filter((p) => !task.projects?.some((tp) => tp.gid === p.gid));
 
   async function submitComment(e) {
     if (e.key !== 'Enter') return;
@@ -130,17 +133,58 @@ export default function TaskDetailModal({
           {formatDateLong(task.created_at ? task.created_at.split('T')[0] : null)}
         </span>
       </div>
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1 min-w-[140px]">
         <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
-          Project
+          Projects
         </span>
-        <span className="flex items-center gap-1.5">
-          <span
-            className="w-2.5 h-2.5 rounded-full"
-            style={{ background: projectColor ?? '#b8b2a8' }}
-          />
-          <span className="font-semibold text-[13px] text-ink">{projectName}</span>
-        </span>
+        <div className="flex flex-wrap gap-1.5 items-center">
+          {task.projects && task.projects.length > 0
+            ? task.projects.map((p) => {
+                const color = projectColors.get(p.gid) ?? '#b8b2a8';
+                return (
+                  <span
+                    key={p.gid}
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-panel-alt border border-border text-ink"
+                    style={{ borderLeftColor: color, borderLeftWidth: 3 }}
+                  >
+                    <span className="truncate max-w-[100px]">{p.name}</span>
+                    {task.projects.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => onRemoveProject(task.gid, p.gid)}
+                        className="border-0 bg-transparent text-fainter hover:text-danger cursor-pointer p-0 text-[10px] font-bold leading-none select-none transition-colors"
+                        title={`Remove from project ${p.name}`}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </span>
+                );
+              })
+            : null}
+
+          {availableProjects.length > 0 && (
+            <div className="relative flex items-center">
+              <select
+                value=""
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val) {
+                    onAddProject(task.gid, val);
+                  }
+                }}
+                className="font-semibold text-[11px] text-accent bg-transparent border border-dashed border-accent hover:bg-[#faf8f4] rounded-full px-2 py-0.5 outline-none cursor-pointer appearance-none"
+              >
+                <option value="">+ Add Project</option>
+                {availableProjects.map((p) => (
+                  <option key={p.gid} value={p.gid} className="text-ink font-normal">
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
       </div>
       <div className="flex flex-col gap-1">
         <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
@@ -258,6 +302,15 @@ export default function TaskDetailModal({
             </h2>
           </div>
 
+          {(!task.projects || task.projects.length === 0) && (
+            <div className="bg-[#fffbeb] border border-[#fef3c7] text-[#b45309] text-xs font-medium px-3.5 py-2.5 rounded-lg flex items-start gap-2">
+              <span className="text-base leading-none">⚠️</span>
+              <span>
+                This task has no projects. Without a project, it is not visible to anyone else.
+              </span>
+            </div>
+          )}
+
           {metaFields}
 
           <div className="flex flex-col gap-2.5">
@@ -317,6 +370,15 @@ export default function TaskDetailModal({
             ✕
           </button>
         </div>
+
+        {(!task.projects || task.projects.length === 0) && (
+          <div className="mx-6.5 mt-4 bg-[#fffbeb] border border-[#fef3c7] text-[#b45309] text-xs font-medium px-3.5 py-2.5 rounded-lg flex items-start gap-2">
+            <span className="text-base leading-none">⚠️</span>
+            <span>
+              This task has no projects. Without a project, it is not visible to anyone else.
+            </span>
+          </div>
+        )}
 
         <div className="px-6.5 py-4.5 border-b border-border-soft">{metaFields}</div>
 

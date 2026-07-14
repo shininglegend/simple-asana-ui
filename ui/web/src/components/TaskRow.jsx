@@ -23,10 +23,9 @@ function Checkbox({ done, onToggle, size = 22 }) {
   );
 }
 
-export default function TaskRow({ task, projectColor, onToggle, onOpen, isMobile }) {
+export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobile }) {
   const done = !!task.completed;
   const overdue = isOverdue(task.due_on, done);
-  const projectName = task.projects?.[0]?.name ?? '';
   const assigneeName = task.assignee?.name;
 
   if (isMobile) {
@@ -52,12 +51,25 @@ export default function TaskRow({ task, projectColor, onToggle, onOpen, isMobile
             >
               {formatDateShort(task.due_on)}
             </span>
-            <span className="flex items-center gap-[5px] min-w-0">
-              <span
-                className="w-2 h-2 rounded-full flex-none"
-                style={{ background: projectColor ?? '#b8b2a8' }}
-              />
-              <span className="font-medium text-xs text-muted truncate">{projectName}</span>
+            <span className="flex items-center gap-1.5 flex-wrap min-w-0">
+              {task.projects && task.projects.length > 0 ? (
+                task.projects.map((p) => {
+                  const color = projectColors.get(p.gid) ?? '#b8b2a8';
+                  return (
+                    <span key={p.gid} className="inline-flex items-center gap-[4px] min-w-0">
+                      <span
+                        className="w-2 h-2 rounded-full flex-none"
+                        style={{ background: color }}
+                      />
+                      <span className="font-medium text-xs text-muted truncate max-w-[80px]">
+                        {p.name}
+                      </span>
+                    </span>
+                  );
+                })
+              ) : (
+                <span className="font-medium text-xs text-danger italic">No Project</span>
+              )}
             </span>
             <span
               className={`font-medium text-xs ${
@@ -102,12 +114,24 @@ export default function TaskRow({ task, projectColor, onToggle, onOpen, isMobile
         {formatDateShort(task.due_on)}
       </span>
 
-      <span className="flex items-center gap-1.5 min-w-0">
-        <span
-          className="w-[9px] h-[9px] rounded-full flex-none"
-          style={{ background: projectColor ?? '#b8b2a8' }}
-        />
-        <span className="font-medium text-xs text-muted truncate">{projectName}</span>
+      <span className="flex items-center gap-1 flex-wrap min-w-0">
+        {task.projects && task.projects.length > 0 ? (
+          task.projects.map((p) => {
+            const color = projectColors.get(p.gid) ?? '#b8b2a8';
+            return (
+              <span
+                key={p.gid}
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#faf8f4] border border-border-soft truncate max-w-[125px]"
+                style={{ borderLeftColor: color, borderLeftWidth: 3 }}
+                title={p.name}
+              >
+                {p.name}
+              </span>
+            );
+          })
+        ) : (
+          <span className="font-medium text-xs text-danger italic">No Project</span>
+        )}
       </span>
 
       <span

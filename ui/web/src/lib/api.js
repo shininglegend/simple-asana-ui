@@ -23,11 +23,8 @@ export function getMe() {
   return apiFetch('users/me?opt_fields=name,gid,workspaces.gid,workspaces.name');
 }
 
-export async function getProjects(workspaceGid, userGid) {
-  const allProjects = await apiFetch(
-    `projects?workspace=${workspaceGid}&opt_fields=name,gid,members.gid&archived=false`,
-  );
-  return allProjects.filter((p) => p.members?.some((m) => m.gid === userGid));
+export function getProjects(workspaceGid) {
+  return apiFetch(`projects?workspace=${workspaceGid}&opt_fields=name,gid&archived=false`);
 }
 
 export function getWorkspaceUsers(workspaceGid) {
@@ -113,5 +110,23 @@ export function addComment(taskGid, text) {
   return apiFetch(`tasks/${taskGid}/stories?opt_fields=${STORY_FIELDS}`, {
     method: 'POST',
     body: JSON.stringify({ data: { text } }),
+  });
+}
+
+export function getMyTasks(workspaceGid, userGid) {
+  return apiFetch(`tasks?workspace=${workspaceGid}&assignee=${userGid}&opt_fields=${TASK_FIELDS}`);
+}
+
+export function addTaskProject(taskGid, projectGid) {
+  return apiFetch(`tasks/${taskGid}/addProject`, {
+    method: 'POST',
+    body: JSON.stringify({ data: { project: projectGid } }),
+  });
+}
+
+export function removeTaskProject(taskGid, projectGid) {
+  return apiFetch(`tasks/${taskGid}/removeProject`, {
+    method: 'POST',
+    body: JSON.stringify({ data: { project: projectGid } }),
   });
 }
