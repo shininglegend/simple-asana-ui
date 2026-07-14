@@ -2,7 +2,7 @@ const BASE =
   'font-semibold text-[13px] px-3.5 py-1.5 rounded-full cursor-pointer border-[1.5px] transition-colors whitespace-nowrap';
 
 function pillClasses(active, variant) {
-  if (active) return `${BASE} bg-ink text-white border-ink hover:bg-[#413d38]`;
+  if (active) return `${BASE} bg-selected text-ink border-selected hover:bg-[#c4cbd5]`;
   if (variant === 'status') return `${BASE} bg-panel text-ink border-ink hover:bg-[#f3efe8]`;
   return `${BASE} bg-panel text-muted border-border hover:border-[#b8b2a8] hover:text-ink`;
 }

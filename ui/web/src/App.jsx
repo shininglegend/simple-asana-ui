@@ -567,7 +567,9 @@ export default function App() {
       (opt) => opt.name === 'UNKNOWN - PLEASE CHANGE',
     );
     const customFields =
-      globalStatusField && unknownOption ? { [globalStatusField.gid]: unknownOption.gid } : undefined;
+      globalStatusField && unknownOption
+        ? { [globalStatusField.gid]: unknownOption.gid }
+        : undefined;
     setNewTitle('');
     setShowAddForm(false);
     try {
@@ -582,7 +584,11 @@ export default function App() {
       const assigneePerson = people.find((p) => p.gid === assigneeGid);
       // Build local custom_fields representation for the new task
       let localCustomFields = created.custom_fields ?? [];
-      if (globalStatusField && unknownOption && !localCustomFields.some((f) => f.gid === globalStatusField.gid)) {
+      if (
+        globalStatusField &&
+        unknownOption &&
+        !localCustomFields.some((f) => f.gid === globalStatusField.gid)
+      ) {
         localCustomFields = [
           ...localCustomFields,
           {
@@ -625,12 +631,18 @@ export default function App() {
       let matchesCustomStatuses = true;
       if (selectedCustomStatuses !== null) {
         const taskStatus =
-          taskObject.custom_fields?.find((f) => f.name?.toLowerCase() === 'status')?.enum_value?.name ??
-          'None';
+          taskObject.custom_fields?.find((f) => f.name?.toLowerCase() === 'status')?.enum_value
+            ?.name ?? 'None';
         matchesCustomStatuses = selectedCustomStatuses.includes(taskStatus);
       }
 
-      if (!matchesQuery || !matchesStatus || !matchesProjects || !matchesPeople || !matchesCustomStatuses) {
+      if (
+        !matchesQuery ||
+        !matchesStatus ||
+        !matchesProjects ||
+        !matchesPeople ||
+        !matchesCustomStatuses
+      ) {
         setWriteError({
           type: 'warning',
           message: (
@@ -894,7 +906,9 @@ export default function App() {
                       : projects[0]?.gid || '',
                   );
                   setNewAssignee(
-                    selectedPeople && selectedPeople.length === 1 && selectedPeople[0] !== 'Unassigned'
+                    selectedPeople &&
+                      selectedPeople.length === 1 &&
+                      selectedPeople[0] !== 'Unassigned'
                       ? people.find((p) => p.name === selectedPeople[0])?.gid || ''
                       : '',
                   );
@@ -903,21 +917,29 @@ export default function App() {
                 }}
                 className={`flex items-center gap-${isMobile ? '[11px] my-3 px-3.5 py-3 bg-panel border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)]' : '4 pt-3.5 pb-4 border-b border-border-soft mb-2'} w-full text-left cursor-pointer hover:opacity-80`}
               >
-                <span className={isMobile
-                  ? 'w-[26px] h-[26px] flex-none rounded-full bg-accent flex items-center justify-center text-white text-lg font-semibold leading-none'
-                  : 'w-[22px] h-[22px] flex-none rounded-lg border-2 border-dashed border-[#d7d0c5] flex items-center justify-center text-[#bcb5a9] text-base leading-none'
-                }>
+                <span
+                  className={
+                    isMobile
+                      ? 'w-[26px] h-[26px] flex-none rounded-full bg-accent flex items-center justify-center text-white text-lg font-semibold leading-none'
+                      : 'w-[22px] h-[22px] flex-none rounded-lg border-2 border-dashed border-[#d7d0c5] flex items-center justify-center text-[#bcb5a9] text-base leading-none'
+                  }
+                >
                   +
                 </span>
                 <span className="text-muted font-medium text-[15px]">Add a task…</span>
               </button>
             ) : (
-              <div className={`${isMobile ? 'my-3 px-3.5 py-3 bg-panel border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)]' : 'pt-3.5 pb-4 border-b border-border-soft mb-2'}`}>
+              <div
+                className={`${isMobile ? 'my-3 px-3.5 py-3 bg-panel border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)]' : 'pt-3.5 pb-4 border-b border-border-soft mb-2'}`}
+              >
                 <div className="flex items-center gap-4">
-                  <span className={isMobile
-                    ? 'w-[26px] h-[26px] flex-none rounded-full bg-accent flex items-center justify-center text-white text-lg font-semibold leading-none'
-                    : 'w-[22px] h-[22px] flex-none rounded-lg border-2 border-dashed border-[#d7d0c5] flex items-center justify-center text-[#bcb5a9] text-base leading-none'
-                  }>
+                  <span
+                    className={
+                      isMobile
+                        ? 'w-[26px] h-[26px] flex-none rounded-full bg-accent flex items-center justify-center text-white text-lg font-semibold leading-none'
+                        : 'w-[22px] h-[22px] flex-none rounded-lg border-2 border-dashed border-[#d7d0c5] flex items-center justify-center text-[#bcb5a9] text-base leading-none'
+                    }
+                  >
                     +
                   </span>
                   <input
@@ -930,7 +952,9 @@ export default function App() {
                     className="flex-1 min-w-0 border-0 outline-none bg-transparent font-semibold text-[15px] text-ink"
                   />
                 </div>
-                <div className={`flex flex-wrap items-center gap-2 mt-2.5 ${isMobile ? '' : 'ml-[38px]'}`}>
+                <div
+                  className={`flex flex-wrap items-center gap-2 mt-2.5 ${isMobile ? '' : 'ml-[38px]'}`}
+                >
                   <select
                     value={newProject}
                     onChange={(e) => setNewProject(e.target.value)}
@@ -1004,7 +1028,9 @@ export default function App() {
       </div>
 
       {toastMsg && (
-        <div className={`fixed bottom-[calc(env(safe-area-inset-bottom)+20px)] left-1/2 -translate-x-1/2 z-[60] max-w-[90vw] ${toastType === 'warning' ? 'bg-[#fbbf24] text-[#1c1917]' : 'bg-danger text-white'} font-semibold text-[14px] px-5 py-3 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.2)] flex items-center gap-2 whitespace-nowrap`}>
+        <div
+          className={`fixed bottom-[calc(env(safe-area-inset-bottom)+20px)] left-1/2 -translate-x-1/2 z-[60] max-w-[90vw] ${toastType === 'warning' ? 'bg-[#fbbf24] text-[#1c1917]' : 'bg-danger text-white'} font-semibold text-[14px] px-5 py-3 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.2)] flex items-center gap-2 whitespace-nowrap`}
+        >
           {toastMsg}
         </div>
       )}
