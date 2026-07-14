@@ -1,6 +1,6 @@
 # simple-asana-ui
 
-An Asana dashboard hosted on **Cloudflare Pages**: a React + Vite + Tailwind front-end (built to static files) backed by Pages Functions that implement an Asana OAuth 2.0 authorization-code flow and a same-origin API proxy. Each user logs in with their own Asana account; access is restricted server-side to members of one Asana workspace. See [BUILD_SPEC.md](BUILD_SPEC.md) for the full spec.
+An Asana dashboard hosted on **Cloudflare Pages**: a React + Vite + Tailwind front-end (built to static files) backed by Pages Functions that implement an Asana OAuth 2.0 authorization-code flow and a same-origin API proxy. Each user logs in with their own Asana account; access is restricted server-side to members of one Asana workspace.
 
 ## Repo layout
 

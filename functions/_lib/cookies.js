@@ -1,4 +1,4 @@
-// Shared cookie helpers + token refresh (see BUILD_SPEC.md "functions/_lib/cookies.js").
+// Shared cookie helpers + token refresh.
 // Cookie names used across the app: asana_at (access token), asana_rt (refresh
 // token), oauth_state (short-lived CSRF state).
 
