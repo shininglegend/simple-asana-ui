@@ -416,11 +416,11 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-panel">
-      <div className="min-h-screen flex flex-col md:max-w-6xl md:mx-auto bg-panel">
+      
         <div className="sticky top-0 z-[5] bg-panel-alt border-b border-border px-4 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] md:px-6 md:py-5.5 flex flex-col gap-3.5">
           <div className="flex items-baseline justify-between gap-3">
             <h1 className="m-0 font-bold text-[17px] md:text-[22px] text-ink tracking-tight">
-              Inner Excellence and Associated Task Management
+              Tasks
             </h1>
             <div className="flex items-center gap-4">
               <span className="hidden md:inline font-semibold text-[13px] text-faint">
@@ -519,7 +519,7 @@ export default function App() {
           <div className={`${filtersOpen ? 'flex' : 'hidden'} md:flex flex-col gap-3.5`}>
             {filterGroups}
           </div>
-        </div>
+        <div className="md:max-w-6xl md:mx-auto bg-panel">
 
         <div className="hidden md:grid grid-cols-[22px_minmax(0,1fr)_96px_96px_210px_150px] items-center gap-x-4 px-6 pt-2.5 pb-2 border-b border-border-soft font-semibold text-[11px] tracking-wider uppercase text-fainter">
           <span />
@@ -600,5 +600,6 @@ export default function App() {
         />
       )}
     </div>
+</div>
   );
 }
