@@ -3,7 +3,6 @@
 @theme {
   --font-sans: 'Instrument Sans', system-ui, sans-serif;
 
-  --color-app-bg: #f4f1ea;
   --color-panel: #fff;
   --color-panel-alt: #fbf9f5;
   --color-border: #e7e1d7;
@@ -25,7 +24,7 @@
 
 body {
   margin: 0;
-  background: var(--color-app-bg);
+  background: var(--color-panel);
   font-family: var(--font-sans);
 }
 
