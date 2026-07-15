@@ -835,10 +835,14 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => {
+                  const inboxProj = projects.find(
+                    (p) =>
+                      p.name.toLowerCase() === '.task inbox' || p.name.toLowerCase() === 'inbox',
+                  );
                   setNewProject(
                     selectedProjects && selectedProjects.length === 1
                       ? projectByName.get(selectedProjects[0])?.gid || ''
-                      : projects[0]?.gid || '',
+                      : inboxProj?.gid || projects[0]?.gid || '',
                   );
                   setNewAssignee(
                     selectedPeople &&
@@ -877,24 +881,24 @@ export default function App() {
                   className={`flex flex-wrap items-center gap-2 mt-2.5 ${isMobile ? '' : 'ml-[38px]'}`}
                 >
                   <select
-                    value={newProject}
-                    onChange={(e) => setNewProject(e.target.value)}
-                    className="text-[13px] px-2 py-1.5 rounded-lg border border-border bg-panel text-ink font-medium outline-none cursor-pointer"
-                  >
-                    <option value="">Project…</option>
-                    {projects.map((p) => (
-                      <option key={p.gid} value={p.gid}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                  <select
                     value={newAssignee}
                     onChange={(e) => setNewAssignee(e.target.value)}
                     className="text-[13px] px-2 py-1.5 rounded-lg border border-border bg-panel text-ink font-medium outline-none cursor-pointer"
                   >
                     <option value="">Assignee…</option>
                     {people.map((p) => (
+                      <option key={p.gid} value={p.gid}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={newProject}
+                    onChange={(e) => setNewProject(e.target.value)}
+                    className="text-[13px] px-2 py-1.5 rounded-lg border border-border bg-panel text-ink font-medium outline-none cursor-pointer"
+                  >
+                    <option value="">Project…</option>
+                    {projects.map((p) => (
                       <option key={p.gid} value={p.gid}>
                         {p.name}
                       </option>
