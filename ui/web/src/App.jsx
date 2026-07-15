@@ -219,9 +219,6 @@ export default function App() {
         comparison = a.name.localeCompare(b.name);
       } else if (sortBy === 'project') {
         comparison = (a.projects?.[0]?.name ?? '').localeCompare(b.projects?.[0]?.name ?? '');
-        if (comparison === 0) {
-          comparison = (a.due_on ?? near).localeCompare(b.due_on ?? near);
-        }
       } else if (sortBy === 'assignee') {
         comparison = (a.assignee?.name ?? '').localeCompare(b.assignee?.name ?? '');
       } else if (sortBy === 'status') {
@@ -230,15 +227,29 @@ export default function App() {
         const bStatus =
           b.custom_fields?.find((f) => f.name?.toLowerCase() === 'status')?.enum_value?.name ?? '';
         comparison = aStatus.localeCompare(bStatus);
-        if (comparison === 0) {
-          comparison = (a.due_on ?? near).localeCompare(b.due_on ?? near);
-        }
       } else if (sortBy === 'due') {
         comparison = (a.due_on ?? near).localeCompare(b.due_on ?? near);
       } else {
         comparison = (a.due_on ?? near).localeCompare(b.due_on ?? near);
       }
-      return comparison * multiplier;
+
+      // Apply primary sort order multiplier
+      const primaryResult = comparison * multiplier;
+      if (primaryResult !== 0) {
+        return primaryResult;
+      }
+
+      // Secondary tiebreaker: due date (sooner = higher / earlier date first),
+      // but only if the primary sort isn't already showing it (i.e. sortBy !== 'due')
+      if (sortBy !== 'due') {
+        const secondaryComparison = (a.due_on ?? near).localeCompare(b.due_on ?? near);
+        if (secondaryComparison !== 0) {
+          return secondaryComparison;
+        }
+      }
+
+      // Tertiary tiebreaker: A-Z (name ascending)
+      return a.name.localeCompare(b.name);
     });
     return out;
   }, [
