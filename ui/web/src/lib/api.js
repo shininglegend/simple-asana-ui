@@ -1,5 +1,7 @@
 const TASK_FIELDS =
   'name,due_on,completed,notes,created_at,assignee.gid,assignee.name,projects.gid,projects.name,custom_fields.gid,custom_fields.name,custom_fields.type,custom_fields.display_value,custom_fields.enum_value.gid,custom_fields.enum_value.name,custom_fields.enum_value.color,custom_fields.enum_options.gid,custom_fields.enum_options.name,custom_fields.enum_options.color,custom_fields.enum_options.enabled,num_subtasks,parent.gid,parent.name,memberships.project.gid,memberships.project.name,memberships.section.gid,memberships.section.name';
+const TASK_LIST_FIELDS =
+  'name,due_on,completed,created_at,assignee.gid,assignee.name,projects.gid,projects.name,custom_fields.gid,custom_fields.name,custom_fields.type,custom_fields.display_value,custom_fields.enum_value.gid,custom_fields.enum_value.name,custom_fields.enum_value.color,custom_fields.enum_options.gid,custom_fields.enum_options.name,custom_fields.enum_options.color,custom_fields.enum_options.enabled,num_subtasks,parent.gid,parent.name,memberships.project.gid,memberships.project.name,memberships.section.gid,memberships.section.name';
 const STORY_FIELDS = 'text,html_text,created_at,created_by.name,resource_subtype';
 
 async function apiFetch(path, options = {}) {
@@ -54,7 +56,7 @@ async function mapLimit(items, fn) {
 
 export async function getTasksForProjects(projectGids) {
   const perProject = await mapLimit(projectGids, (gid) =>
-    apiFetch(`projects/${gid}/tasks?opt_fields=${TASK_FIELDS}`),
+    apiFetch(`projects/${gid}/tasks?opt_fields=${TASK_LIST_FIELDS}`),
   );
   const byGid = new Map();
   for (const list of perProject) {
@@ -117,12 +119,35 @@ export function getStories(taskGid) {
   return apiFetch(`tasks/${taskGid}/stories?opt_fields=${STORY_FIELDS}`);
 }
 
+export async function getDetailsForTasks(taskGids) {
+  return mapLimit(taskGids, async (gid) => {
+    try {
+      const [task, stories] = await Promise.all([getTask(gid), getStories(gid)]);
+      return {
+        gid,
+        notes: task.notes || '',
+        stories: (stories || [])
+          .filter((s) => s.resource_subtype === 'comment_added')
+          .map((s) => ({
+            author: s.created_by?.name ?? 'Someone',
+            time: new Date(s.created_at).toLocaleString(),
+            text: s.text,
+            htmlText: s.html_text,
+          })),
+      };
+    } catch (e) {
+      console.error(`Failed to fetch details for task ${gid}:`, e);
+      return { gid, notes: '', stories: [] };
+    }
+  });
+}
+
 export function getTask(taskGid) {
   return apiFetch(`tasks/${taskGid}?opt_fields=${TASK_FIELDS}`);
 }
 
 export function getSubtasks(taskGid) {
-  return apiFetch(`tasks/${taskGid}/subtasks?opt_fields=${TASK_FIELDS}`);
+  return apiFetch(`tasks/${taskGid}/subtasks?opt_fields=${TASK_LIST_FIELDS}`);
 }
 
 export function addComment(taskGid, text) {
@@ -133,7 +158,9 @@ export function addComment(taskGid, text) {
 }
 
 export function getMyTasks(workspaceGid, userGid) {
-  return apiFetch(`tasks?workspace=${workspaceGid}&assignee=${userGid}&opt_fields=${TASK_FIELDS}`);
+  return apiFetch(
+    `tasks?workspace=${workspaceGid}&assignee=${userGid}&opt_fields=${TASK_LIST_FIELDS}`,
+  );
 }
 
 export function addTaskProject(taskGid, projectGid) {

@@ -30,6 +30,7 @@ import {
   deleteTask,
   getTask,
   addTaskToSection,
+  getDetailsForTasks,
 } from './lib/api.js';
 
 const STATUS_OPTIONS = ['Incomplete', 'Complete', 'All'];
@@ -80,6 +81,7 @@ export default function App() {
     null,
   );
   const [query, setQuery] = usePersistentState('asana_filter_query', '', { raw: true });
+  const [fetchingCommentsForSearch, setFetchingCommentsForSearch] = useState(false);
   const [sortBy, setSortBy] = usePersistentState('asana_filter_sortBy', 'created', { raw: true });
   const [sortOrder, setSortOrder] = usePersistentState('asana_filter_sortOrder', 'desc', {
     raw: true,
@@ -139,7 +141,8 @@ export default function App() {
         const byGid = new Map();
         projectTasks.forEach((t) => byGid.set(t.gid, t));
         myTasks.forEach((t) => byGid.set(t.gid, t));
-        setTasks(Array.from(byGid.values()));
+        const allTasks = Array.from(byGid.values());
+        setTasks(allTasks);
       } catch (e) {
         setError(e.message);
       } finally {
@@ -147,6 +150,40 @@ export default function App() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+
+    const missing = tasks.filter((t) => t.notes === undefined || t.comments === undefined);
+    if (missing.length === 0 || fetchingCommentsForSearch) return;
+
+    setFetchingCommentsForSearch(true);
+
+    getDetailsForTasks(missing.map((t) => t.gid))
+      .then((results) => {
+        setTasks((currTasks) => {
+          const resultsMap = new Map(results.map((r) => [r.gid, r]));
+          return currTasks.map((t) => {
+            const result = resultsMap.get(t.gid);
+            if (result) {
+              return { ...t, notes: result.notes, comments: result.stories };
+            }
+            return {
+              ...t,
+              notes: t.notes === undefined ? '' : t.notes,
+              comments: t.comments === undefined ? [] : t.comments,
+            };
+          });
+        });
+      })
+      .catch((err) => {
+        console.error('Error fetching details for search:', err);
+      })
+      .finally(() => {
+        setFetchingCommentsForSearch(false);
+      });
+  }, [query, tasks, fetchingCommentsForSearch]);
 
   useEffect(() => {
     if (!writeError) return undefined;
@@ -407,6 +444,10 @@ export default function App() {
       () => setTaskNotes(gid, notes),
       "Couldn't save the description in Asana.",
     );
+  }
+
+  function handleCommentsChange(gid, comments) {
+    updateTaskLocal(gid, { comments });
   }
 
   async function handleDueChange(gid, dueOn) {
@@ -716,10 +757,10 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen bg-panel py-6 px-3 md:px-8">
-      <div className="max-w-6xl mx-auto flex flex-col md:grid md:grid-cols-[350px_1fr] gap-6 items-start">
+    <div className="min-h-screen bg-panel py-4 px-3 md:py-6 md:px-8">
+      <div className="max-w-6xl mx-auto flex flex-col gap-3 md:grid md:grid-cols-[350px_1fr] md:gap-6 items-start">
         {/* Card A: Top Bar */}
-        <div className="bg-white rounded-xl shadow-xs border border-border-soft p-4 md:p-6 flex flex-col gap-4 md:col-span-2 md:col-start-1 md:row-start-1 w-full">
+        <div className="bg-white rounded-xl shadow-xs border border-border-soft p-4 md:p-6 flex flex-col gap-3.5 md:gap-4 md:col-span-2 md:col-start-1 md:row-start-1 w-full">
           <div className="flex items-baseline justify-between gap-3">
             <h1 className="m-0 font-bold text-[17px] md:text-[22px] text-ink tracking-tight">
               Inner Excellence Tasks
@@ -757,6 +798,11 @@ export default function App() {
               placeholder="Search tasks…"
               className="flex-1 min-w-0 border-0 outline-none bg-transparent font-medium text-sm text-ink"
             />
+            {fetchingCommentsForSearch && (
+              <span className="text-[11px] text-[#a8a196] animate-pulse whitespace-nowrap">
+                Searching comments & details…
+              </span>
+            )}
           </div>
 
           {/* Mobile Filter Toggle & Sort Row */}
@@ -916,17 +962,17 @@ export default function App() {
                   setNewDueDate(defaultDueDate());
                   setShowAddForm(true);
                 }}
-                className="flex items-center gap-3 my-3 px-3.5 py-3 bg-panel border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)] w-full text-left cursor-pointer hover:opacity-80"
+                className="flex items-center gap-2 md:gap-3 my-3 px-3.5 py-2 md:py-3 bg-panel border-[1.5px] border-border rounded-[10px] md:rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)] w-full text-left cursor-pointer hover:opacity-80"
               >
-                <span className="w-[26px] h-[26px] flex-none rounded-full bg-accent flex items-center justify-center text-white text-lg font-semibold leading-none">
+                <span className="w-5 h-5 md:w-[26px] md:h-[26px] flex-none rounded-full bg-accent flex items-center justify-center text-white text-xs md:text-lg font-semibold leading-none">
                   +
                 </span>
-                <span className="text-muted font-medium text-[15px]">Add a task…</span>
+                <span className="text-muted font-medium text-sm md:text-[15px]">Add a task…</span>
               </button>
             ) : (
-              <div className="my-3 px-3.5 py-3 bg-panel border-[1.5px] border-border rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)]">
-                <div className="flex items-center gap-3">
-                  <span className="w-[26px] h-[26px] flex-none rounded-full bg-accent flex items-center justify-center text-white text-lg font-semibold leading-none">
+              <div className="my-3 px-3.5 py-2 md:py-3 bg-panel border-[1.5px] border-border rounded-[10px] md:rounded-xl shadow-[0_1px_2px_rgba(60,50,35,0.05)]">
+                <div className="flex items-center gap-2 md:gap-3">
+                  <span className="w-5 h-5 md:w-[26px] md:h-[26px] flex-none rounded-full bg-accent flex items-center justify-center text-white text-xs md:text-lg font-semibold leading-none">
                     +
                   </span>
                   <input
@@ -936,7 +982,7 @@ export default function App() {
                     onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
                     placeholder="Task name…"
                     autoFocus
-                    className="flex-1 min-w-0 border-0 outline-none bg-transparent font-semibold text-[15px] text-ink"
+                    className="flex-1 min-w-0 border-0 outline-none bg-transparent font-semibold text-sm md:text-[15px] text-ink"
                   />
                 </div>
                 <div
@@ -1043,6 +1089,7 @@ export default function App() {
           globalStatusField={globalStatusField}
           people={people}
           isMobile={isMobile}
+          onCommentsChange={handleCommentsChange}
         />
       )}
     </div>

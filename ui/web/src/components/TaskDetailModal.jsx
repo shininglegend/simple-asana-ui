@@ -50,11 +50,12 @@ export default function TaskDetailModal({
   globalStatusField,
   people = [],
   isMobile,
+  onCommentsChange,
 }) {
   const [dueDate, setDueDate] = useState(task?.due_on ?? null);
   const [notes, setNotes] = useState(task?.notes ?? '');
   const [name, setName] = useState(task?.name ?? '');
-  const [comments, setComments] = useState([]);
+  const [comments, setComments] = useState(task?.comments ?? []);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(true);
   const [commentError, setCommentError] = useState(null);
@@ -107,30 +108,40 @@ export default function TaskDetailModal({
   }, [task?.gid, task?.name]);
 
   useEffect(() => {
+    if (task?.comments) {
+      setComments(task.comments);
+    }
+  }, [task?.comments]);
+
+  useEffect(() => {
     if (!task?.gid) return;
     let cancelled = false;
     setLoadingComments(true);
     setCommentError(null);
+    setComments(task?.comments ?? []);
     getStories(task.gid)
       .then((stories) => {
         if (cancelled) return;
-        setComments(
-          stories
-            .filter((s) => s.resource_subtype === 'comment_added')
-            .map((s) => ({
-              author: s.created_by?.name ?? 'Someone',
-              time: new Date(s.created_at).toLocaleString(),
-              text: s.text,
-              htmlText: s.html_text,
-            })),
-        );
+        const mappedComments = (stories || [])
+          .filter((s) => s.resource_subtype === 'comment_added')
+          .map((s) => ({
+            author: s.created_by?.name ?? 'Someone',
+            time: new Date(s.created_at).toLocaleString(),
+            text: s.text,
+            htmlText: s.html_text,
+          }));
+        setComments(mappedComments);
+        if (onCommentsChange) {
+          onCommentsChange(task.gid, mappedComments);
+        }
       })
       .catch(() => !cancelled && setCommentError('Couldn’t load comments.'))
       .finally(() => !cancelled && setLoadingComments(false));
     return () => {
       cancelled = true;
     };
-  }, [task?.gid]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task?.gid, onCommentsChange]);
 
   useEffect(() => {
     if (!task?.gid) return;
@@ -239,15 +250,16 @@ export default function TaskDetailModal({
     setNewComment('');
     try {
       const story = await addComment(task.gid, text);
-      setComments((c) => [
-        ...c,
-        {
-          author: story.created_by?.name ?? 'You',
-          time: new Date(story.created_at).toLocaleString(),
-          text: story.text || text,
-          htmlText: story.html_text,
-        },
-      ]);
+      const newCommentObj = {
+        author: story.created_by?.name ?? 'You',
+        time: new Date(story.created_at).toLocaleString(),
+        text: story.text || text,
+        htmlText: story.html_text,
+      };
+      setComments((c) => [...c, newCommentObj]);
+      if (onCommentsChange) {
+        onCommentsChange(task.gid, [...comments, newCommentObj]);
+      }
       setCommentError(null);
     } catch {
       setNewComment(text);

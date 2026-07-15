@@ -25,7 +25,12 @@ export function taskMatchesFilters(
   { query, status, selectedProjects, selectedPeople, selectedCustomStatuses, selectedPriorities },
 ) {
   const q = query.trim().toLowerCase();
-  if (q && !task.name.toLowerCase().includes(q)) return false;
+  if (q) {
+    const nameMatch = (task.name || '').toLowerCase().includes(q);
+    const notesMatch = (task.notes || '').toLowerCase().includes(q);
+    const commentsMatch = task.comments?.some((c) => (c.text || '').toLowerCase().includes(q));
+    if (!nameMatch && !notesMatch && !commentsMatch) return false;
+  }
   if (status === 'Incomplete' && task.completed) return false;
   if (status === 'Complete' && !task.completed) return false;
   if (selectedProjects !== null) {

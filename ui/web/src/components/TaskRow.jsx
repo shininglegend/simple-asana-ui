@@ -76,6 +76,16 @@ export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobil
           <span>{task.num_subtasks}</span>
         </span>
       )}
+      <span
+        className="md:inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold border truncate max-w-[150px]"
+        style={{
+          backgroundColor: getPriorityStyle(priority).bg,
+          color: getPriorityStyle(priority).text,
+          borderColor: getPriorityStyle(priority).border,
+        }}
+      >
+        {priority}
+      </span>
       {/* Split the row here on mobile: full-width zero-height spacer forces a wrap */}
       <span className="basis-full h-0 md:hidden" aria-hidden="true" />
       {currentStatus ? (
@@ -94,16 +104,6 @@ export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobil
           No status
         </span>
       )}
-      <span
-        className="hidden md:inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold border truncate max-w-[150px]"
-        style={{
-          backgroundColor: getPriorityStyle(priority).bg,
-          color: getPriorityStyle(priority).text,
-          borderColor: getPriorityStyle(priority).border,
-        }}
-      >
-        {priority}
-      </span>
       {task.projects && task.projects.length > 0 ? (
         task.projects.map((p) => {
           const color = projectColors.get(p.gid) ?? '#b8b2a8';
