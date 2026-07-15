@@ -6,7 +6,12 @@ import TaskDetailModal from './components/TaskDetailModal.jsx';
 import { assignProjectColors, STATUS_OPTION_STYLES, stripStatusPrefix } from './lib/colors.js';
 import { useIsMobile } from './lib/useIsMobile.js';
 import { usePersistentState } from './lib/usePersistentState.js';
-import { taskMatchesFilters, NO_STATUS } from './lib/filterTasks.js';
+import {
+  taskMatchesFilters,
+  NO_STATUS,
+  getTaskPriority,
+  PRIORITY_OPTIONS,
+} from './lib/filterTasks.js';
 import {
   getMe,
   getProjects,
@@ -24,6 +29,7 @@ import {
   setTaskCustomField,
   deleteTask,
   getTask,
+  addTaskToSection,
 } from './lib/api.js';
 
 const STATUS_OPTIONS = ['Incomplete', 'Complete', 'All'];
@@ -42,6 +48,8 @@ const getSortLabel = (val, order) => {
       return 'Due date';
     case 'status':
       return 'Status';
+    case 'priority':
+      return 'Priority';
     case 'name':
       return order === 'asc' ? 'A-Z' : 'Z-A';
     default:
@@ -65,6 +73,10 @@ export default function App() {
   const [selectedPeople, setSelectedPeople] = usePersistentState('asana_filter_people', null);
   const [selectedCustomStatuses, setSelectedCustomStatuses] = usePersistentState(
     'asana_filter_custom_statuses',
+    null,
+  );
+  const [selectedPriorities, setSelectedPriorities] = usePersistentState(
+    'asana_filter_priorities',
     null,
   );
   const [query, setQuery] = usePersistentState('asana_filter_query', '', { raw: true });
@@ -207,10 +219,19 @@ export default function App() {
         selectedProjects,
         selectedPeople,
         selectedCustomStatuses,
+        selectedPriorities,
       }),
     );
     const near = '0000-00-00';
     const multiplier = sortOrder === 'desc' ? -1 : 1;
+
+    const comparePriority = (a, b) => {
+      const order = { Priority: 1, 'Low Priority': 2, 'Long Term': 3, Done: 4 };
+      const valA = order[getTaskPriority(a)] || 2;
+      const valB = order[getTaskPriority(b)] || 2;
+      return valA - valB;
+    };
+
     out.sort((a, b) => {
       let comparison = 0;
       if (sortBy === 'created') {
@@ -229,6 +250,8 @@ export default function App() {
         comparison = aStatus.localeCompare(bStatus);
       } else if (sortBy === 'due') {
         comparison = (a.due_on ?? near).localeCompare(b.due_on ?? near);
+      } else if (sortBy === 'priority') {
+        comparison = comparePriority(a, b);
       } else {
         comparison = (a.due_on ?? near).localeCompare(b.due_on ?? near);
       }
@@ -239,16 +262,24 @@ export default function App() {
         return primaryResult;
       }
 
-      // Secondary tiebreaker: due date (sooner = higher / earlier date first),
-      // but only if the primary sort isn't already showing it (i.e. sortBy !== 'due')
-      if (sortBy !== 'due') {
-        const secondaryComparison = (a.due_on ?? near).localeCompare(b.due_on ?? near);
+      // Secondary tiebreaker: Priority (highest priority first, i.e. Priority < Low Priority < Long Term < Done)
+      if (sortBy !== 'priority') {
+        const secondaryComparison = comparePriority(a, b);
         if (secondaryComparison !== 0) {
           return secondaryComparison;
         }
       }
 
-      // Tertiary tiebreaker: A-Z (name ascending)
+      // Tertiary tiebreaker: due date (sooner = higher / earlier date first),
+      // but only if the primary sort isn't already showing it (i.e. sortBy !== 'due')
+      if (sortBy !== 'due') {
+        const tertiaryComparison = (a.due_on ?? near).localeCompare(b.due_on ?? near);
+        if (tertiaryComparison !== 0) {
+          return tertiaryComparison;
+        }
+      }
+
+      // Quaternary tiebreaker: A-Z (name ascending)
       return a.name.localeCompare(b.name);
     });
     return out;
@@ -259,6 +290,7 @@ export default function App() {
     selectedProjects,
     selectedPeople,
     selectedCustomStatuses,
+    selectedPriorities,
     sortBy,
     sortOrder,
   ]);
@@ -303,6 +335,15 @@ export default function App() {
     setSelectedCustomStatuses((prev) => {
       if (prev === null) {
         return customStatusOptions.filter((n) => n !== name);
+      }
+      return prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name];
+    });
+  }
+
+  function togglePriority(name) {
+    setSelectedPriorities((prev) => {
+      if (prev === null) {
+        return PRIORITY_OPTIONS.filter((n) => n !== name);
       }
       return prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name];
     });
@@ -384,6 +425,15 @@ export default function App() {
       { assignee: newAssignee },
       () => setTaskAssignee(gid, assigneeGid),
       "Couldn't save the assignee in Asana.",
+    );
+  }
+
+  async function handlePriorityChange(taskGid, updatedMemberships, sectionGid) {
+    await optimisticUpdate(
+      taskGid,
+      { memberships: updatedMemberships },
+      () => addTaskToSection(taskGid, sectionGid),
+      "Couldn't update the priority in Asana.",
     );
   }
 
@@ -553,6 +603,7 @@ export default function App() {
         selectedProjects,
         selectedPeople,
         selectedCustomStatuses,
+        selectedPriorities,
       });
 
       if (isHidden) {
@@ -568,6 +619,7 @@ export default function App() {
                   setSelectedProjects(null);
                   setSelectedPeople(null);
                   setSelectedCustomStatuses(null);
+                  setSelectedPriorities(null);
                   setQuery('');
                   setWriteError(null);
                 }}
@@ -608,7 +660,8 @@ export default function App() {
     (status !== 'Incomplete' ? 1 : 0) +
     (selectedProjects !== null ? 1 : 0) +
     (selectedPeople !== null ? 1 : 0) +
-    (selectedCustomStatuses !== null ? 1 : 0);
+    (selectedCustomStatuses !== null ? 1 : 0) +
+    (selectedPriorities !== null ? 1 : 0);
   const countLabel = `${filtered.length} ${filtered.length === 1 ? 'task' : 'tasks'} in this view`;
 
   const isObjectToast = writeError && typeof writeError === 'object' && 'message' in writeError;
@@ -617,15 +670,13 @@ export default function App() {
 
   const filterGroups = (
     <>
-      <div className="flex flex-col gap-4">
-        <FilterGroup
-          label="Show"
-          options={STATUS_OPTIONS}
-          value={status}
-          variant="status"
-          onSelect={setStatus}
-        />
-      </div>
+      <FilterGroup
+        label="Show"
+        options={STATUS_OPTIONS}
+        value={status}
+        variant="status"
+        onSelect={setStatus}
+      />
       <MultiFilterGroup
         label="Project"
         options={projects.map((p) => ({
@@ -652,6 +703,14 @@ export default function App() {
         onToggle={toggleCustomStatus}
         onSelectAll={() => setSelectedCustomStatuses(null)}
         onSelectNone={() => setSelectedCustomStatuses([])}
+      />
+      <MultiFilterGroup
+        label="Priority"
+        options={PRIORITY_OPTIONS}
+        selected={selectedPriorities}
+        onToggle={togglePriority}
+        onSelectAll={() => setSelectedPriorities(null)}
+        onSelectNone={() => setSelectedPriorities([])}
       />
     </>
   );
@@ -757,6 +816,7 @@ export default function App() {
                 <option value="created">{sortOrder === 'asc' ? 'Oldest' : 'Newest'}</option>
                 <option value="due">Due date</option>
                 <option value="status">Status</option>
+                <option value="priority">Priority</option>
                 <option value="name">{sortOrder === 'asc' ? 'A-Z' : 'Z-A'}</option>
               </select>
             </div>
@@ -819,6 +879,8 @@ export default function App() {
             {renderHeader('Due Date', 'due')}
             <span className="text-border-soft">•</span>
             {renderHeader('Status', 'status')}
+            <span className="text-border-soft">•</span>
+            {renderHeader('Priority', 'priority')}
             <span className="text-border-soft">•</span>
             {renderHeader(
               sortBy === 'created' ? (sortOrder === 'desc' ? 'Newest' : 'Oldest') : 'Newest',
@@ -975,6 +1037,7 @@ export default function App() {
           onDueChange={handleDueChange}
           onAssigneeChange={handleAssigneeChange}
           onCustomFieldChange={handleCustomFieldChange}
+          onPriorityChange={handlePriorityChange}
           onDelete={handleDeleteTask}
           onOpenTask={handleSelectId}
           globalStatusField={globalStatusField}

@@ -1,5 +1,6 @@
 import { formatDateShort, isOverdue } from '../lib/format.js';
-import { getStatusStyle } from '../lib/colors.js';
+import { getStatusStyle, getPriorityStyle, getPriorityBgClass } from '../lib/colors.js';
+import { getTaskPriority } from '../lib/filterTasks.js';
 
 function Checkbox({ done, onToggle, size = 22 }) {
   return (
@@ -30,10 +31,15 @@ export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobil
   const assigneeName = task.assignee?.name?.split(' ')[0];
   const currentStatus =
     task.custom_fields?.find((f) => f.name?.toLowerCase() === 'status')?.enum_value || null;
+  const priority = getTaskPriority(task);
 
   const metaLine = (
     <div className="flex flex-wrap items-center gap-1 mt-1">
-      <span className="text-[13px] text-muted font-normal">{assigneeName ?? 'Unassigned'}</span>
+      <span
+        className={`text-[13px] font-normal ${assigneeName ? 'text-muted' : 'text-danger italic'}`}
+      >
+        {assigneeName ?? 'Unassigned'}
+      </span>
       {task.due_on ? (
         <span
           className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold border truncate ${
@@ -88,6 +94,16 @@ export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobil
           No status
         </span>
       )}
+      <span
+        className="hidden md:inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold border truncate max-w-[150px]"
+        style={{
+          backgroundColor: getPriorityStyle(priority).bg,
+          color: getPriorityStyle(priority).text,
+          borderColor: getPriorityStyle(priority).border,
+        }}
+      >
+        {priority}
+      </span>
       {task.projects && task.projects.length > 0 ? (
         task.projects.map((p) => {
           const color = projectColors.get(p.gid) ?? '#b8b2a8';
@@ -118,7 +134,7 @@ export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobil
     return (
       <div
         onClick={() => onOpen(task.gid)}
-        className="flex items-start gap-3 py-3 px-0.5 cursor-pointer"
+        className={`flex items-start gap-3 py-3 px-2 -mx-2 rounded-lg cursor-pointer transition-colors ${getPriorityBgClass(priority)}`}
       >
         <div className="flex-none pt-[1px]">
           <Checkbox done={done} onToggle={() => onToggle(task.gid, !done)} size={22} />
@@ -140,7 +156,7 @@ export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobil
   return (
     <div
       onClick={() => onOpen(task.gid)}
-      className="grid grid-cols-[22px_minmax(0,1fr)] items-start gap-x-4 py-2.5 px-3 -mx-3 rounded-lg cursor-pointer hover:bg-[#faf8f4] transition-colors"
+      className={`grid grid-cols-[22px_minmax(0,1fr)] items-start gap-x-4 py-2.5 px-3 -mx-3 rounded-lg cursor-pointer transition-colors ${getPriorityBgClass(priority)}`}
     >
       <div className="flex-none pt-[1px]">
         <Checkbox done={done} onToggle={() => onToggle(task.gid, !done)} />

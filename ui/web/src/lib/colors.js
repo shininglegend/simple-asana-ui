@@ -58,3 +58,29 @@ export function getStatusStyle(optionName, optionColor) {
   if (mapped) return mapped;
   return { bg: '#f3f4f6', text: '#1f2937', border: '#e5e7eb' };
 }
+
+export const PRIORITY_STYLES = {
+  Priority: { bg: '#facfcf', text: '#991b1b', border: '#fba6a6' },
+  'Low Priority': { bg: '#c0e3fb', text: '#0369a1', border: '#9bd7f7' }, // soft blue
+  'Long Term': { bg: '#e0c7fa', text: '#6b21a8', border: '#dbbdfb' }, // soft purple
+  Done: { bg: '#f4f6f3', text: '#374151', border: '#e5e7eb' }, // soft gray
+};
+
+export function getPriorityStyle(priorityName) {
+  return PRIORITY_STYLES[priorityName] || PRIORITY_STYLES['Low Priority'];
+}
+
+export function getPriorityBgClass(priority) {
+  switch (priority) {
+    case 'Priority':
+      return 'bg-red-50/80! hover:bg-red-100/80!';
+    case 'Low Priority':
+      return 'bg-sky-50/70! hover:bg-sky-100/70!';
+    case 'Long Term':
+      return 'bg-purple-50/70! hover:bg-purple-100/70!';
+    case 'Done':
+      return 'bg-slate-100/80! hover:bg-slate-200/80!';
+    default:
+      return 'bg-transparent hover:bg-[#faf8f4]!';
+  }
+}

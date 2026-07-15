@@ -1,7 +1,14 @@
 import { useEffect, useState, Fragment } from 'react';
 import { formatDateLong, isOverdue } from '../lib/format.js';
-import { colorForName, getStatusStyle } from '../lib/colors.js';
-import { getStories, addComment, getSubtasks, setTaskCompleted } from '../lib/api.js';
+import { colorForName, getStatusStyle, getPriorityStyle } from '../lib/colors.js';
+import {
+  getStories,
+  addComment,
+  getSubtasks,
+  setTaskCompleted,
+  getProjectSections,
+} from '../lib/api.js';
+import { getTaskPriority, PRIORITY_OPTIONS } from '../lib/filterTasks.js';
 
 const FALLBACK_OPTIONS = [
   { gid: 'unknown', name: 'UNKNOWN - PLEASE CHANGE', color: 'orange' },
@@ -38,6 +45,7 @@ export default function TaskDetailModal({
   onDueChange,
   onAssigneeChange,
   onCustomFieldChange,
+  onPriorityChange,
   onDelete,
   globalStatusField,
   people = [],
@@ -52,6 +60,23 @@ export default function TaskDetailModal({
   const [commentError, setCommentError] = useState(null);
   const [copied, setCopied] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [priorityDropdownOpen, setPriorityDropdownOpen] = useState(false);
+  const [projectSections, setProjectSections] = useState([]);
+
+  useEffect(() => {
+    const firstProject = task?.projects?.[0];
+    if (firstProject) {
+      getProjectSections(firstProject.gid)
+        .then((sections) => {
+          setProjectSections(sections);
+        })
+        .catch((err) => {
+          console.error('Failed to load project sections:', err);
+        });
+    } else {
+      setProjectSections([]);
+    }
+  }, [task?.projects]);
 
   const [subtasks, setSubtasks] = useState([]);
   const [loadingSubtasks, setLoadingSubtasks] = useState(true);
@@ -139,6 +164,7 @@ export default function TaskDetailModal({
     FALLBACK_STATUS_FIELD;
   const currentStatus =
     task?.custom_fields?.find((f) => f.name?.toLowerCase() === 'status')?.enum_value || null;
+  const priority = getTaskPriority(task);
 
   async function handleToggleSubtask(subtaskGid, completed) {
     const prev = subtasks.find((s) => s.gid === subtaskGid);
@@ -151,6 +177,58 @@ export default function TaskDetailModal({
         curr.map((s) => (s.gid === subtaskGid ? { ...s, completed: prev.completed } : s)),
       );
       console.error('Failed to toggle subtask:', err);
+    }
+  }
+
+  async function handlePriorityChange(newPriority) {
+    const firstProject = task?.projects?.[0];
+    if (!firstProject) return;
+
+    const targetSection = projectSections.find(
+      (s) => s.name?.toLowerCase() === newPriority.toLowerCase(),
+    );
+    if (!targetSection) {
+      console.warn(
+        `No matching section found for priority "${newPriority}" in project "${firstProject.name}"`,
+      );
+      return;
+    }
+
+    const prevMemberships = task.memberships ?? [];
+    let updatedMemberships;
+    const hasMembership = prevMemberships.some((m) => m.project?.gid === firstProject.gid);
+
+    if (hasMembership) {
+      updatedMemberships = prevMemberships.map((m) => {
+        if (m.project?.gid === firstProject.gid) {
+          return {
+            ...m,
+            section: {
+              gid: targetSection.gid,
+              name: targetSection.name,
+            },
+          };
+        }
+        return m;
+      });
+    } else {
+      updatedMemberships = [
+        ...prevMemberships,
+        {
+          project: {
+            gid: firstProject.gid,
+            name: firstProject.name,
+          },
+          section: {
+            gid: targetSection.gid,
+            name: targetSection.name,
+          },
+        },
+      ];
+    }
+
+    if (onPriorityChange) {
+      onPriorityChange(task.gid, updatedMemberships, targetSection.gid);
     }
   }
 
@@ -467,6 +545,69 @@ export default function TaskDetailModal({
                       Clear status
                     </button>
                   )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-col gap-1 relative">
+          <span className="font-semibold text-[10px] tracking-wider uppercase text-fainter">
+            Priority
+          </span>
+          <div className="relative">
+            <button
+              type="button"
+              disabled={!task?.projects || task.projects.length === 0}
+              onClick={() => setPriorityDropdownOpen(!priorityDropdownOpen)}
+              className="flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 transition-colors outline-none select-none h-[24px] rounded px-2.5 py-0.5 font-semibold text-[11px] border"
+              style={{
+                backgroundColor: getPriorityStyle(priority).bg,
+                color: getPriorityStyle(priority).text,
+                borderColor: getPriorityStyle(priority).border,
+              }}
+            >
+              <span>{priority}</span>
+              <span className="text-[8px]" style={{ color: 'currentColor' }}>
+                ▼
+              </span>
+            </button>
+
+            {priorityDropdownOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setPriorityDropdownOpen(false)}
+                />
+                <div className="absolute left-0 mt-1.5 z-20 w-[240px] bg-[#252525] border border-[#383838] rounded-xl shadow-lg shadow-black/40 py-1.5 overflow-hidden flex flex-col font-sans">
+                  {PRIORITY_OPTIONS.map((opt) => {
+                    const style = getPriorityStyle(opt);
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => {
+                          handlePriorityChange(opt);
+                          setPriorityDropdownOpen(false);
+                        }}
+                        className="relative w-full flex items-center gap-2 px-3 py-1.5 text-left border-0 bg-transparent text-white hover:bg-white/5 cursor-pointer transition-colors group"
+                      >
+                        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="w-4 flex items-center justify-center text-[10px] font-bold text-white/80 select-none">
+                          {priority === opt ? '✓' : ''}
+                        </div>
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border"
+                          style={{
+                            backgroundColor: style.bg,
+                            color: style.text,
+                            borderColor: style.border,
+                          }}
+                        >
+                          {opt}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </>
             )}

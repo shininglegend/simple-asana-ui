@@ -1,5 +1,5 @@
 const TASK_FIELDS =
-  'name,due_on,completed,notes,created_at,assignee.gid,assignee.name,projects.gid,projects.name,custom_fields.gid,custom_fields.name,custom_fields.type,custom_fields.display_value,custom_fields.enum_value.gid,custom_fields.enum_value.name,custom_fields.enum_value.color,custom_fields.enum_options.gid,custom_fields.enum_options.name,custom_fields.enum_options.color,custom_fields.enum_options.enabled,num_subtasks,parent.gid,parent.name';
+  'name,due_on,completed,notes,created_at,assignee.gid,assignee.name,projects.gid,projects.name,custom_fields.gid,custom_fields.name,custom_fields.type,custom_fields.display_value,custom_fields.enum_value.gid,custom_fields.enum_value.name,custom_fields.enum_value.color,custom_fields.enum_options.gid,custom_fields.enum_options.name,custom_fields.enum_options.color,custom_fields.enum_options.enabled,num_subtasks,parent.gid,parent.name,memberships.project.gid,memberships.project.name,memberships.section.gid,memberships.section.name';
 const STORY_FIELDS = 'text,html_text,created_at,created_by.name,resource_subtype';
 
 async function apiFetch(path, options = {}) {
@@ -165,4 +165,19 @@ export function setTaskCustomField(taskGid, customFieldGid, enumOptionGid) {
 
 export function deleteTask(taskGid) {
   return apiFetch(`tasks/${taskGid}`, { method: 'DELETE' });
+}
+
+export function getProjectSections(projectGid) {
+  return apiFetch(`projects/${projectGid}/sections?opt_fields=name,gid`);
+}
+
+export function addTaskToSection(taskGid, sectionGid) {
+  return apiFetch(`sections/${sectionGid}/addTask`, {
+    method: 'POST',
+    body: JSON.stringify({
+      data: {
+        task: taskGid,
+      },
+    }),
+  });
 }
