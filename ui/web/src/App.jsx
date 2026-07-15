@@ -657,7 +657,7 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen bg-panel py-6 px-4 md:px-8">
+    <div className="min-h-screen bg-panel py-6 px-3 md:px-8">
       <div className="max-w-6xl mx-auto flex flex-col md:grid md:grid-cols-[350px_1fr] gap-6 items-start">
         {/* Card A: Top Bar */}
         <div className="bg-white rounded-xl shadow-xs border border-border-soft p-4 md:p-6 flex flex-col gap-4 md:col-span-2 md:col-start-1 md:row-start-1 w-full">
@@ -826,7 +826,7 @@ export default function App() {
             )}
           </div>
 
-          <div className="flex-1 overflow-auto px-4 md:px-6 py-1.5">
+          <div className="flex-1 overflow-auto px-2 md:px-6 py-1.5">
             <div className="md:hidden pt-2.5 pb-1 px-0.5 font-semibold text-[11px] tracking-wider uppercase text-fainter">
               {countLabel}
             </div>

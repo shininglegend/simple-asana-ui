@@ -27,25 +27,30 @@ function Checkbox({ done, onToggle, size = 22 }) {
 export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobile }) {
   const done = !!task.completed;
   const overdue = isOverdue(task.due_on, done);
-  const assigneeName = task.assignee?.name;
+  const assigneeName = task.assignee?.name?.split(' ')[0];
   const currentStatus =
     task.custom_fields?.find((f) => f.name?.toLowerCase() === 'status')?.enum_value || null;
 
   const metaLine = (
-    <div className="flex flex-wrap items-center gap-1.5 mt-1">
-      {currentStatus && (
+    <div className="flex flex-wrap items-center gap-1 mt-1">
+      <span className="text-[13px] text-muted font-normal">{assigneeName ?? 'Unassigned'}</span>
+      {task.due_on ? (
         <span
-          className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold border truncate max-w-[120px]"
-          style={{
-            backgroundColor: getStatusStyle(currentStatus.name, currentStatus.color).bg,
-            color: getStatusStyle(currentStatus.name, currentStatus.color).text,
-            borderColor: getStatusStyle(currentStatus.name, currentStatus.color).border,
-          }}
+          className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold border truncate ${
+            overdue
+              ? 'bg-danger/10 text-danger border-danger/20'
+              : done
+                ? 'bg-panel border-border-soft text-placeholder'
+                : 'bg-panel border-border-soft text-muted'
+          }`}
         >
-          {currentStatus.name}
+          Due on {formatDateShort(task.due_on)}
+        </span>
+      ) : (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-panel border border-border-soft text-[11px] font-medium text-placeholder italic">
+          No due date
         </span>
       )}
-      <span className="text-[13px] text-muted font-normal">{assigneeName ?? 'Unassigned'}</span>
       {task.num_subtasks > 0 && (
         <span
           className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-panel border border-border-soft text-[11px] font-medium text-muted"
@@ -65,19 +70,37 @@ export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobil
           <span>{task.num_subtasks}</span>
         </span>
       )}
+      {/* Split the row here on mobile: full-width zero-height spacer forces a wrap */}
+      <span className="basis-full h-0 md:hidden" aria-hidden="true" />
+      {currentStatus ? (
+        <span
+          className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold border truncate max-w-[150px]"
+          style={{
+            backgroundColor: getStatusStyle(currentStatus.name, currentStatus.color).bg,
+            color: getStatusStyle(currentStatus.name, currentStatus.color).text,
+            borderColor: getStatusStyle(currentStatus.name, currentStatus.color).border,
+          }}
+        >
+          {currentStatus.name}
+        </span>
+      ) : (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-panel border border-border-soft text-[11px] font-medium text-placeholder italic">
+          No status
+        </span>
+      )}
       {task.projects && task.projects.length > 0 ? (
         task.projects.map((p) => {
           const color = projectColors.get(p.gid) ?? '#b8b2a8';
           return (
             <span
               key={p.gid}
-              className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-panel border border-border-soft min-w-0 text-[11px]"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-panel border border-border-soft min-w-0 text-[11px]"
             >
               <span
                 className="w-1.5 h-1.5 rounded-full flex-none"
                 style={{ backgroundColor: color }}
               />
-              <span className="font-medium text-muted truncate max-w-[100px]" title={p.name}>
+              <span className="font-medium text-muted truncate max-w-[120px]" title={p.name}>
                 {p.name}
               </span>
             </span>
@@ -86,19 +109,6 @@ export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobil
       ) : (
         <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-panel border border-border-soft text-[11px] font-medium text-danger/80 italic">
           No Project
-        </span>
-      )}
-      {task.due_on && (
-        <span
-          className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold border truncate ${
-            overdue
-              ? 'bg-danger/10 text-danger border-danger/20'
-              : done
-                ? 'bg-panel border-border-soft text-placeholder'
-                : 'bg-panel border-border-soft text-muted'
-          }`}
-        >
-          Due on {formatDateShort(task.due_on)}
         </span>
       )}
     </div>

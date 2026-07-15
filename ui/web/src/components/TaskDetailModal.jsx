@@ -563,7 +563,7 @@ export default function TaskDetailModal({
             onClick={onClose}
             className="border-0 bg-transparent text-accent font-semibold text-[15px] cursor-pointer px-1 py-1.5"
           >
-            ‹ Tasks
+            ‹ Back to Tasks
           </button>
           <button
             type="button"
