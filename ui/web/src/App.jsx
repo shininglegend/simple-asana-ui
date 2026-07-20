@@ -10,6 +10,7 @@ import { usePersistentState } from './lib/usePersistentState.js';
 import {
   taskMatchesFilters,
   NO_STATUS,
+  NO_PROJECT,
   getTaskPriority,
   PRIORITY_OPTIONS,
 } from './lib/filterTasks.js';
@@ -248,7 +249,8 @@ export default function App() {
   const customStatusOptions = useMemo(() => {
     const names =
       globalStatusField?.enum_options?.map((o) => o.name) ?? Object.keys(STATUS_OPTION_STYLES);
-    return [...names, NO_STATUS];
+    const sorted = [...names].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    return [...sorted, NO_STATUS];
   }, [globalStatusField]);
 
   const filtered = useMemo(() => {
@@ -358,7 +360,8 @@ export default function App() {
 
   function toggleProject(name) {
     setSelectedProjects((prev) => {
-      if (prev === null) return projects.map((p) => p.name).filter((n) => n !== name);
+      if (prev === null)
+        return [...projects.map((p) => p.name), NO_PROJECT].filter((n) => n !== name);
       return prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name];
     });
   }
@@ -728,15 +731,12 @@ export default function App() {
         onSelect={setStatus}
       />
       <MultiFilterGroup
-        label="Project"
-        options={projects.map((p) => ({
-          name: p.name,
-          color: projectColors.get(p.gid),
-        }))}
-        selected={selectedProjects}
-        onToggle={toggleProject}
-        onSelectAll={() => setSelectedProjects(null)}
-        onSelectNone={() => setSelectedProjects([])}
+        label="Priority"
+        options={PRIORITY_OPTIONS}
+        selected={selectedPriorities}
+        onToggle={togglePriority}
+        onSelectAll={() => setSelectedPriorities(null)}
+        onSelectNone={() => setSelectedPriorities([])}
       />
       <MultiFilterGroup
         label="Who"
@@ -760,20 +760,26 @@ export default function App() {
         }
       />
       <MultiFilterGroup
+        label="Project"
+        options={[
+          ...projects.map((p) => ({
+            name: p.name,
+            color: projectColors.get(p.gid),
+          })),
+          NO_PROJECT,
+        ]}
+        selected={selectedProjects}
+        onToggle={toggleProject}
+        onSelectAll={() => setSelectedProjects(null)}
+        onSelectNone={() => setSelectedProjects([])}
+      />
+      <MultiFilterGroup
         label="Status"
         options={customStatusOptions}
         selected={selectedCustomStatuses}
         onToggle={toggleCustomStatus}
         onSelectAll={() => setSelectedCustomStatuses(null)}
         onSelectNone={() => setSelectedCustomStatuses([])}
-      />
-      <MultiFilterGroup
-        label="Priority"
-        options={PRIORITY_OPTIONS}
-        selected={selectedPriorities}
-        onToggle={togglePriority}
-        onSelectAll={() => setSelectedPriorities(null)}
-        onSelectNone={() => setSelectedPriorities([])}
       />
     </>
   );

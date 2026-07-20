@@ -3,6 +3,11 @@
 // so the two don't render as identical pills.
 export const NO_STATUS = 'No status';
 
+// Sentinel used by the Project filter for tasks that don't belong to any
+// visible project (e.g. tasks pulled in via "my tasks" that aren't in a
+// project the user is a member of).
+export const NO_PROJECT = 'No project';
+
 export const PRIORITY_OPTIONS = ['Priority', 'Low Priority', 'Long Term', 'Done'];
 
 export function getTaskPriority(task) {
@@ -35,7 +40,8 @@ export function taskMatchesFilters(
   if (status === 'Complete' && !task.completed) return false;
   if (selectedProjects !== null) {
     const names = task.projects?.map((p) => p.name) ?? [];
-    if (!names.some((n) => selectedProjects.includes(n))) return false;
+    const projectNames = names.length ? names : [NO_PROJECT];
+    if (!projectNames.some((n) => selectedProjects.includes(n))) return false;
   }
   if (selectedPeople !== null) {
     const assigneeName = task.assignee ? task.assignee.name : 'Unassigned';
