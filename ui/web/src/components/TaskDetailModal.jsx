@@ -140,8 +140,12 @@ export default function TaskDetailModal({
     return () => {
       cancelled = true;
     };
+    // Only re-fetch when the opened task changes. onCommentsChange is
+    // intentionally excluded: it's an unmemoized parent callback whose identity
+    // changes on every App render, and this effect triggers such a render (via
+    // onCommentsChange -> setTasks), so including it causes an infinite fetch loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [task?.gid, onCommentsChange]);
+  }, [task?.gid]);
 
   useEffect(() => {
     if (!task?.gid) return;
