@@ -1,5 +1,5 @@
 const BASE =
-  'font-semibold text-[12px] px-2.5 py-0.5 rounded-full cursor-pointer border transition-colors whitespace-nowrap';
+  'font-semibold text-[14px] px-2.5 py-0.5 rounded-full cursor-pointer border transition-colors whitespace-nowrap';
 
 function pillClasses(active, variant) {
   if (active) return `${BASE} bg-selected text-ink border-selected hover:bg-[#c4cbd5]`;

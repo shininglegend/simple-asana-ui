@@ -6,6 +6,13 @@ function pillClasses(active) {
   return `${BASE} bg-panel text-muted border-border hover:border-[#b8b2a8] hover:text-ink`;
 }
 
+// Distinct, higher-emphasis styling for a shortcut pill (e.g. "Only my tasks")
+// so it stands apart from the regular multi-select options.
+function actionPillClasses(active) {
+  if (active) return `${BASE} bg-green-600 text-white border-green-600 hover:bg-green-700`;
+  return `${BASE} bg-green-50 text-ink border-green-600 hover:bg-green-100`;
+}
+
 export default function MultiFilterGroup({
   label,
   options,
@@ -13,6 +20,7 @@ export default function MultiFilterGroup({
   onToggle,
   onSelectAll,
   onSelectNone,
+  leadingAction,
 }) {
   const isAll = selected === null;
   const isNone = Array.isArray(selected) && selected.length === 0;
@@ -46,9 +54,19 @@ export default function MultiFilterGroup({
         </div>
       </div>
       <div className="flex gap-1.5 flex-wrap">
+        {leadingAction && (
+          <button
+            type="button"
+            className={actionPillClasses(leadingAction.active)}
+            onClick={leadingAction.onClick}
+          >
+            {leadingAction.label}
+          </button>
+        )}
         {options.map((opt) => {
           const name = typeof opt === 'object' ? opt.name : opt;
           const color = typeof opt === 'object' ? opt.color : null;
+          const display = typeof opt === 'object' ? (opt.label ?? opt.name) : opt;
           const active = isAll || (Array.isArray(selected) && selected.includes(name));
           return (
             <button
@@ -63,7 +81,7 @@ export default function MultiFilterGroup({
                   style={{ backgroundColor: color }}
                 />
               )}
-              <span>{name}</span>
+              <span>{display}</span>
             </button>
           );
         })}

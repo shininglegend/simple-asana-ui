@@ -4,6 +4,7 @@ import MultiFilterGroup from './components/MultiFilterGroup.jsx';
 import TaskRow from './components/TaskRow.jsx';
 import TaskDetailModal from './components/TaskDetailModal.jsx';
 import { assignProjectColors, STATUS_OPTION_STYLES, stripStatusPrefix } from './lib/colors.js';
+import { firstName } from './lib/format.js';
 import { useIsMobile } from './lib/useIsMobile.js';
 import { usePersistentState } from './lib/usePersistentState.js';
 import {
@@ -60,6 +61,7 @@ const getSortLabel = (val, order) => {
 
 export default function App() {
   const [workspaceGid, setWorkspaceGid] = useState(null);
+  const [me, setMe] = useState(null);
   const [projects, setProjects] = useState([]);
   const [people, setPeople] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -125,6 +127,7 @@ export default function App() {
     (async () => {
       try {
         const me = await getMe();
+        setMe(me);
         const wsGid = me.workspaces?.[0]?.gid;
         if (!wsGid) throw new Error('No workspace found for this user.');
         setWorkspaceGid(wsGid);
@@ -697,6 +700,12 @@ export default function App() {
     );
   }
 
+  const onlyMyTasks =
+    !!me &&
+    Array.isArray(selectedPeople) &&
+    selectedPeople.length === 1 &&
+    selectedPeople[0] === me.name;
+
   const activeFilterCount =
     (status !== 'Incomplete' ? 1 : 0) +
     (selectedProjects !== null ? 1 : 0) +
@@ -731,11 +740,24 @@ export default function App() {
       />
       <MultiFilterGroup
         label="Who"
-        options={[...people.map((p) => p.name), 'Unassigned']}
+        options={[
+          ...people.map((p) => ({
+            name: p.name,
+            label: `${firstName(p.name)}${p.gid === me?.gid ? ' (you)' : ''}`,
+          })),
+          'Unassigned',
+        ]}
         selected={selectedPeople}
         onToggle={togglePerson}
         onSelectAll={() => setSelectedPeople(null)}
         onSelectNone={() => setSelectedPeople([])}
+        leadingAction={
+          me && {
+            label: 'Only my tasks',
+            active: onlyMyTasks,
+            onClick: () => setSelectedPeople(onlyMyTasks ? null : [me.name]),
+          }
+        }
       />
       <MultiFilterGroup
         label="Status"
@@ -912,6 +934,29 @@ export default function App() {
             filtersOpen ? 'flex' : 'hidden'
           } md:flex flex-col gap-4 bg-white rounded-xl shadow-xs border border-border-soft p-4 md:p-6 md:col-start-1 md:row-start-2 md:sticky md:top-6 w-full`}
         >
+          <div className="flex md:hidden items-center justify-between">
+            <span className="font-bold text-[15px] text-ink">Filters</span>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen(false)}
+              aria-label="Close filters"
+              className="flex items-center justify-center w-8 h-8 rounded-full text-danger hover:bg-danger/10 transition-colors cursor-pointer"
+            >
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="6" y1="6" x2="18" y2="18" />
+                <line x1="18" y1="6" x2="6" y2="18" />
+              </svg>
+            </button>
+          </div>
           {filterGroups}
         </div>
 

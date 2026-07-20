@@ -1,4 +1,4 @@
-import { formatDateShort, isOverdue } from '../lib/format.js';
+import { formatDateShort, isOverdue, firstName } from '../lib/format.js';
 import { getStatusStyle, getPriorityStyle, getPriorityBgClass } from '../lib/colors.js';
 import { getTaskPriority } from '../lib/filterTasks.js';
 
@@ -28,7 +28,7 @@ function Checkbox({ done, onToggle, size = 22 }) {
 export default function TaskRow({ task, projectColors, onToggle, onOpen, isMobile }) {
   const done = !!task.completed;
   const overdue = isOverdue(task.due_on, done);
-  const assigneeName = task.assignee?.name?.split(' ')[0];
+  const assigneeName = firstName(task.assignee?.name);
   const currentStatus =
     task.custom_fields?.find((f) => f.name?.toLowerCase() === 'status')?.enum_value || null;
   const priority = getTaskPriority(task);

@@ -1,5 +1,12 @@
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+// Person display helper: show only the first name (or first token, e.g. an
+// email local part). Returns undefined for a missing name so callers can
+// fall back to their own placeholder.
+export function firstName(fullName) {
+  return fullName?.split(' ')[0];
+}
+
 export function formatDateShort(iso) {
   if (!iso) return '—';
   const d = new Date(`${iso}T00:00:00`);
